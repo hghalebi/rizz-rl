@@ -1,0 +1,263 @@
+ZED VIM EDITOR CHEAT SHEET
+==========================
+
+This is for Zed's built-in Vim mode on macOS.
+
+ENABLE VIM MODE
+---------------
+
+Settings -> add:
+
+    "vim_mode": true
+
+Or use the command palette once:
+
+    Cmd+Shift+P -> workspace: toggle vim mode
+
+The main rule:
+
+    Normal mode = navigate and issue commands
+    Insert mode = type text
+    Visual mode = select text
+
+Press Esc to return to Normal mode.
+
+
+MODES AND INSERTING TEXT
+------------------------
+
+    i       insert before the cursor
+    a       insert after the cursor
+    I       insert at the first non-blank character of the line
+    A       insert at the end of the line
+    o       open a new line below and insert
+    O       open a new line above and insert
+    s       delete the character and insert
+    S       replace the whole line
+    r       replace one character
+    R       replace characters until Esc
+    Esc     return to Normal mode
+
+Writing pattern:
+
+    Esc -> move -> i/a/o -> write -> Esc
+
+
+MOVE THE CURSOR (NORMAL MODE)
+-----------------------------
+
+    h       left                 l       right
+    j       down                 k       up
+    0       beginning of line    ^       first non-blank character
+    $       end of line          gg      first line of file
+    G       last line of file    42G     go to line 42
+
+    w       next word start      b       previous word star    e       end of word          ge      previous word end
+    W/B/E   same, using whitespace-separated WORDS
+
+    f<char> find next <char> on this line
+    F<char> find previous <char> on this line
+    t<char> move just before next <char>
+    T<char> move just after previous <char>
+    ;       repeat the last f/F/t/T motion
+    ,       repeat it in the opposite direction
+    %       jump between matching brackets
+
+    Ctrl+d  half-page down       Ctrl+u  half-page up
+    Ctrl+f  page down            Ctrl+b  page up
+
+
+EDITING: OPERATOR + MOTION
+--------------------------
+
+Most editing commands have this shape:
+
+    operator + motion
+
+Operators:
+
+    d       delete
+    c       change (delete, then enter Insert mode)
+    y       yank/copy
+
+Examples:
+
+    dw      delete to the next word
+    d$      delete to the end of the line
+    cw      change to the next word
+    y$      copy to the end of the line
+    ciw     change inside the current word
+    diw     delete inside the current word
+    yi(     copy inside parentheses
+    da{     delete around braces, including the braces
+
+Repeated operators act on whole lines:
+
+    dd      delete line
+    cc      change line
+    yy      copy line
+    >>      indent line
+    <<      unindent line
+    ==      reindent line
+
+Useful line edits:
+
+    D       delete from cursor to line end
+    C       change from cursor to line end
+    X       delete one character to the left
+    x       delete character under cursor
+    J       join the next line to the current line
+    .       repeat the last change
+
+
+TEXT OBJECTS
+------------
+
+Use a command such as ci, followed by a text object:
+
+    iw      inner word                 aw      a word
+    i"      inside double quotes       a"      quotes included
+    i'      inside single quotes       a'      quotes included
+    i(      inside parentheses         a(      parentheses included
+    i[      inside brackets            a[      brackets included
+    i{      inside braces              a{      braces included
+    ip      inner paragraph            ap      paragraph included
+
+Examples:
+
+    ci"     replace text inside quotes
+    da(     delete a parenthesized expression
+Zed also supports surround commands:
+
+    ysiw"   surround the current word with double quotes
+    cs"'    change surrounding double quotes to single quotes
+    ds"     delete surrounding double quotes
+
+
+VISUAL MODE
+-----------
+
+    v       character-wise selection
+    V       line-wise selection
+    Ctrl+v  block selection
+    o       move to the other end of the selection
+    y       copy selection
+    d       delete selection
+    c       replace selection
+    >       indent selection
+    <       unindent selection
+    gc      comment/uncomment selection
+    Esc     return to Normal mode
+
+Selection workflow:
+
+    v -> motion -> y/d/c -> Esc
+
+
+COPY, PASTE, UNDO
+-----------------
+
+    yy      copy the current line
+    y{motion} copy the motion's range
+    p       paste after the cursor
+    P       paste before the cursor
+    u       undo
+    Ctrl+r  redo
+
+
+SEARCH AND REPLACE
+------------------
+
+    /text       search forward
+    ?text       search backward
+    n           next match
+    N           previous match
+    *           search forward for the word under the cursor
+    #           search backward for the word under the cursor
+
+    :s/old/new/    replace first match on the current line
+    :s/old/new/g   replace all matches on the current line
+
+Zed's Vim search uses Zed's search system, so some regular-expression
+details differ from standalone Vim.
+
+
+FILES, TABS, AND SPLITS
+-----------------------
+
+Vim-style Ex commands in Zed:
+
+    :w          save current file
+    :wa         save all files
+    :q          close current buffer
+    :wq         save and close current buffer
+    :vs         vertical split
+    :sp         horizontal split
+    :new        new file in a horizontal split
+    :vnew       new file in a vertical split
+    :tabnew     new file in a new tab
+    :tabn       next tab
+    :tabp       previous tab
+    :tabc       close current tab
+    :ls         list open buffers
+    :E          open the project panel
+
+Vim-style pane movement:
+
+    Ctrl+w h    focus pane to the left
+    Ctrl+w j    focus pane below
+    Ctrl+w k    focus pane above
+    Ctrl+w l    focus pane to the right
+
+
+ZED PANELS WITHOUT THE MOUSE (MACOS)
+------------------------------------
+
+These are Zed workspace shortcuts, not Vim commands:
+
+    Ctrl+`         focus/show the internal terminal panel
+    Ctrl+~         open a new internal terminal
+    F6             focus the next major Zed area
+    Shift+F6       focus the previous major Zed area
+    Cmd+Shift+E    focus the project panel
+
+The backtick key (`) is normally above Tab. Press Ctrl+` again to return
+focus from the terminal panel to the editor.
+
+
+ZED-SPECIFIC CODE NAVIGATION (NORMAL MODE)
+-------------------------------------------
+
+    gd       go to definition
+    gD       go to declaration
+    gy       go to type definition
+    gI       go to implementation
+    gA       find all references
+    gs       find symbol in current file
+    gS       find symbol in the whole project
+    gh       show inline error/hover information
+    g.       open code actions
+    ]d       next diagnostic
+    [d       previous diagnostic
+    ]c       next Git change
+
+
+SMALL PRACTICE ROUTINE
+----------------------
+
+1. Press Esc.
+2. Use w/b or h/j/k/l to reach the target.
+3. Use an operator plus a motion: ciw, dap, y$.
+4. Use . to repeat the change.
+5. Press u immediately if the result is wrong.
+
+The reusable idea is: navigate first, then apply a small command to a
+precise range. This avoids selecting text with the mouse.
+
+
+OFFICIAL REFERENCES
+-------------------
+
+https://zed.dev/docs/vim
+https://zed.dev/docs/terminal
+https://zed.dev/docs/all-actions
