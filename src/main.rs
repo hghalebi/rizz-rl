@@ -1,4 +1,12 @@
 #![allow(dead_code)]
+use tracing::{Level, debug, debug_span, info, info_span, warn};
+fn init_racing() {
+    tracing_subscriber::fmt()
+        .with_max_level(Level::DEBUG)
+        .with_target(false)
+        .compact()
+        .init();
+}
 #[derive(Debug, Clone)]
 struct Dist<T> {
     items: Vec<(T, f64)>,
@@ -14,6 +22,7 @@ impl<T> Dist<T> {
                 .collect(),
         }
     }
+
     fn flat_map<U>(self, f: impl Fn(T) -> Dist<U>) -> Dist<U> {
         let mut out = Vec::new();
         for (current, probaility_so_far) in self.items {
@@ -37,6 +46,26 @@ impl<T: PartialEq> Dist<T> {
             .filter(|(value, _)| value == traget)
             .map(|(_, probability)| probability)
             .sum()
+    }
+}
+#[derive(Clone, Debug)]
+struct Transition {
+    state: State,
+    action: Action,
+    reward: f64,
+    next: State,
+}
+type Trajectory = Vec<Transition>;
+fn reward(state: &State, action: &Action, next: State) -> f64 {
+    match (state, action, next) {
+        (State::LowInterest, Action::Coffee, _) => -12.0,
+        (State::Engaged, Action::Coffee, State::LowInterest) => -8.0,
+        (_, _, State::MutualInterest) => 0.8,
+        (State::Engaged, Action::Tease, State::Playful) => 3.0,
+        (State::LowInterest, Action::Space | Action::Goodbye, State::GoodBye) => 2.0,
+        (_, _, State::LowInterest) => -2.0,
+        (_, Action::Ask | Action::Story, State::Playful | State::Engaged) => 1.0,
+        _ => 0.0,
     }
 }
 
@@ -172,24 +201,52 @@ fn step_manual(state: &State) -> Dist<State> {
 fn step(state: &State) -> Dist<State> {
     policy(state).flat_map(|action| world(state, &action))
 }
+fn transition(state: &State) -> Dist<Transition> {
+    policy(state).flat_map(|action| {
+        world(state, &action).flat_map(|next| Dist {
+            items: vec![(
+                Transition {
+                    state: state.clone(),
+
+                    action: action.clone(),
+                    reward: reward(state, &action, next.clone()),
+                    next,
+                },
+                1.0,
+            )],
+        })
+    })
+}
 fn main() {
+    init_racing();
     println!("Hello, world!");
     let s1 = State::JustMet;
 
     let a1 = Action::Ask;
-    println!("{s1:?}->{a1:?}");
+    info!("{:?}-> {:?}", s1, a1);
+
+    println!("-------");
     let futures = world(&State::Engaged, &Action::Tease);
-    for (state, probability) in futures.items {
-        println!("{:.0}% -> {state:?}", probability * 100.0,);
+    for (state, probability) in &futures.items {
+        info!("{:.0}% -> {state:?}", probability * 100.0,);
     }
-    println!("total probability= {:.4}", futures.total_probability());
+    println!("-------");
+    info!("total probability= {:.4}", futures.total_probability());
     let future_path = step_manual(&State::Engaged);
     for (state, probability) in future_path.items {
-        println!("{probability:.4?} -> {state:?}");
+        info!("{probability:.4} -> {state:?}");
     }
     println!("---------------");
     let future_trajectory = step(&State::Engaged);
     for (state, probability) in future_trajectory.items {
-        println!("{probability:.4} -> {state:?}");
+        info!("{probability:.4} -> {state:?}");
+    }
+    println!("------- transition-------");
+    let posibilities = transition(&State::Engaged);
+    for (transition, probabilitis) in posibilities.items {
+        info!(
+            "{:.4}: {:?} --{:?} / {:+.1}--> {:?}",
+            probabilitis, transition.state, transition.action, transition.reward, transition.next,
+        );
     }
 }
