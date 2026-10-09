@@ -14,7 +14,8 @@
 //! The immediate reward is not discounted. Only the future value is.
 //! This evaluates a known model; it does not learn from experience.
 
-use super::{possible_transitions, DatingWorld, Policy, State};
+use crate::model::{DatingWorld, Policy, State};
+use crate::planning::possible_transitions;
 
 pub(super) struct ValueEstimate {
     pub(super) expected_return: f64,
@@ -92,7 +93,9 @@ fn value_for(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{discounted_return, enumerate_trajectories, expected_value};
+    use crate::model::{Action, Transition};
+    use crate::planning::{discounted_return, enumerate_trajectories};
+    use crate::probability::expected_value;
 
     fn assert_close(actual: f64, expected: f64) {
         assert!(
@@ -124,6 +127,46 @@ mod tests {
         let value = evaluate_value(&policy, &DatingWorld, &State::LowInterest, 4, 0.95);
         assert_close(value.expected_return, 2.0);
         assert_eq!(value.evaluated_states, 1);
+    }
+
+    #[test]
+    fn the_greedy_action_can_depend_on_remaining_horizon() {
+        // A separate deterministic toy model: TakeNow ends with reward 2;
+        // Wait yields 0 now and 5 next. These are supplied reward traces,
+        // not DatingWorld rewards. Use the same production return calculation.
+        let take_now = vec![Transition {
+            from_state: State::JustMet,
+            action: Action::Goodbye,
+            reward: 2.0,
+            to_state: State::Goodbye,
+        }];
+        let wait = [
+            Transition {
+                from_state: State::JustMet,
+                action: Action::Ask,
+                reward: 0.0,
+                to_state: State::Engaged,
+            },
+            Transition {
+                from_state: State::Engaged,
+                action: Action::Goodbye,
+                reward: 5.0,
+                to_state: State::Goodbye,
+            },
+        ];
+        let gamma = 0.5;
+        let now_with_one_step = discounted_return(&take_now, gamma);
+        let wait_with_one_step = discounted_return(&wait[..1].to_vec(), gamma);
+        assert_close(now_with_one_step, 2.0);
+        assert_close(wait_with_one_step, 0.0);
+        assert!(now_with_one_step > wait_with_one_step);
+
+        // Terminal reward 2 receives no further rewards, even when h is 2.
+        let now_with_two_steps = discounted_return(&take_now, gamma);
+        let wait_with_two_steps = discounted_return(&wait.to_vec(), gamma);
+        assert_close(now_with_two_steps, 2.0);
+        assert_close(wait_with_two_steps, 2.5);
+        assert!(wait_with_two_steps > now_with_two_steps);
     }
 
     #[test]

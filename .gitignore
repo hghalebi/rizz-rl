@@ -1,3 +1,5 @@
 /target
 /level-1-rl-expanded/target/
 /.nvimlog
+/scratch/original/target/
+/scripts/__pycache__/
