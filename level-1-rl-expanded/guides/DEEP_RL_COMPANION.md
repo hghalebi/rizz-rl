@@ -1,6 +1,10 @@
-# Level 1.5 — Deep RL Companion for the Rust Probability-Tree Program
+# Deep RL companion: reference for the Rust lab
 
-This companion explains the ideas implemented by [`src/main.rs`](../src/main.rs), then builds a bridge from that small exact planner toward the major families of reinforcement-learning techniques. Start with the shorter [learning path](LEARNING_PATH.md); use this file as a reference.
+This reference explains the ideas implemented by the [probability operations](../src/probability.rs), [world model](../src/model.rs), and [exact planner](../src/planning.rs), then builds a bridge from that small exact planner toward the major families of reinforcement-learning techniques. Start with the shorter [learning path](LEARNING_PATH.md); use this file as a reference.
+
+The separate `learn-value` command now learns fixed-policy values from sampled
+transitions. Follow the [experience lesson](EXPERIENCE_LESSON.md) and
+[`src/experience.rs`](../src/experience.rs) for that implemented TD(0) path.
 
 The program itself remains intentionally small. The explanations are separated from the source so the code stays readable.
 
@@ -8,13 +12,13 @@ The program itself remains intentionally small. The explanations are separated f
 
 # How to read this companion
 
-Every section is marked with one of three labels.
+Section labels distinguish implemented ideas, derivations, and future extensions.
 
 **IMPLEMENTED** means the idea exists directly in the Rust program.
 
 **DERIVED** means the idea follows mathematically from what the program does, even if it is not named in the source.
 
-**NEXT TECHNIQUE** means the program does not implement it yet. It is included to show which limitation motivates that technique.
+**NEXT TECHNIQUE** means a complete implementation of that technique remains future work. An isolated target exercise does not by itself implement a training loop. These sections show which limitation motivates the technique.
 
 This distinction matters:
 
@@ -34,7 +38,7 @@ Do not try to memorize every acronym. Learn the causal ladder.
 
 # 0. The complete mental model
 
-The program answers one question:
+The exact planning commands answer one question:
 
 > If an agent follows a policy with a particular boldness, what discounted reward should it expect over the next five interaction steps?
 
@@ -85,7 +89,7 @@ boldness 1.0 ──evaluate──▶ score
 
 **IMPLEMENTED**
 
-The system is:
+The exact planning path is:
 
 ```text
 finite-horizon
@@ -97,12 +101,15 @@ finite-horizon
 + grid-search optimization
 ```
 
-It is not yet:
+The separate `learn-value` command implements finite-horizon, tabular TD(0)
+evaluation of a fixed policy from sampled simulator transitions. Its learner
+does not read the model's probabilities or exact values; those values are
+computed afterward for comparison.
+
+The following complete training methods remain future work:
 
 ```text
-learning from unknown experience
 Monte Carlo estimation
-temporal-difference learning
 Q-learning
 policy-gradient training
 actor-critic training
@@ -943,11 +950,13 @@ The code uses a stochastic policy.
 
 ## Important nuance: stochasticity is not automatically exploration
 
-During evaluation, the program enumerates every policy branch.
+The exact evaluation commands enumerate every policy branch.
 
-It does not randomly try actions to learn unknown rewards.
+The `learn-value` command instead samples actions from the same fixed policy to
+learn its values. It does not change that policy to discover better actions.
 
-Therefore the policy is stochastic, but the program is not performing online exploration.
+Therefore a stochastic policy alone does not establish an exploration strategy
+for policy improvement.
 
 Exploration requires uncertainty about what is best and interaction to reduce that uncertainty.
 
@@ -1896,7 +1905,7 @@ given policy scores or values
 → choose a better policy
 ```
 
-The program evaluates each candidate, then chooses the best grid point.
+The `sweep` command evaluates each candidate, then chooses the best grid point.
 
 This is a primitive form of policy improvement.
 
@@ -1914,7 +1923,7 @@ The following techniques are not all implemented. Each one exists because a simp
 
 [`values::evaluate_value`](../src/values.rs) now evaluates the same policy by
 memoizing `(steps_remaining, state)`. Run `cargo run -- compare` from the
-`level-1-rl-expanded` directory to compare its answer with full trajectory
+repository root to compare its answer with full trajectory
 enumeration. This computes state values using a known model; it does not learn
 values from experience or implement action-value control.
 
@@ -1935,40 +1944,42 @@ Dynamic programming stores and reuses state values.
 ## State-value function
 
 \[
-V^\pi(s)
+V_h^\pi(s)
 =
-E_\pi[G_t \mid S_t=s]
+E_\pi[G_t^{(h)} \mid S_t=s]
 \]
 
 Human meaning:
 
-> Expected future discounted return starting from state `s` and then following policy `π`.
+> Expected discounted return over at most `h` remaining steps, starting from state `s` and following policy `π`.
+
+Here `G_t^{(h)}` stops after `h` rewards or at termination, whichever comes first.
 
 ## Action-value function
 
 \[
-Q^\pi(s,a)
+Q_h^\pi(s,a)
 =
-E_\pi[G_t \mid S_t=s,A_t=a]
+E_\pi[G_t^{(h)} \mid S_t=s,A_t=a]
 \]
 
 Human meaning:
 
-> Expected future return if action `a` is taken now in state `s`, then policy `π` is followed afterward.
+> Expected return if action `a` is taken now in state `s`, then policy `π` is followed for the remaining `h - 1` steps.
 
 ## Bellman expectation equation
 
 \[
-V^\pi(s)
+V_h^\pi(s)
 =
 \sum_a \pi(a \mid s)
 \sum_{s'}P(s' \mid s,a)
 \left[
-R(s,a,s') + \gamma V^\pi(s')
+R(s,a,s') + \gamma V_{h-1}^\pi(s')
 \right]
 \]
 
-This equation compresses the future tree.
+For `h >= 1`, this equation compresses the future tree.
 
 ```text
 value of state
@@ -2030,6 +2041,11 @@ policy π₁
 
 It assumes a known model and usually a manageable tabular state/action space.
 
+For this lab's finite horizon, improve decisions separately for each `(h, s)`:
+`pi_new(h, s) = argmax_a Q_h(s, a)`. The best action can depend on time remaining;
+[Lab 14](INTERACTIVE_LABS.md#lab-14-policy-improvement-depends-on-the-remaining-horizon)
+contains a numeric counterexample.
+
 ---
 
 # 42. Value iteration
@@ -2039,6 +2055,9 @@ It assumes a known model and usually a manageable tabular state/action space.
 Value iteration combines evaluation and improvement.
 
 Bellman optimality equation:
+
+This stationary notation is for a continuing task. A finite-horizon version
+uses `V_h` on the left and `V_(h-1)` for the continuation value on the right.
 
 \[
 V^*(s)
@@ -2108,7 +2127,13 @@ some branches sampled, noisy estimate, scalable
 
 # 44. Temporal-difference learning
 
-**NEXT TECHNIQUE**
+**IMPLEMENTED: finite-horizon evaluation of a fixed policy**
+
+Run `cargo run -- td-trace` or `cargo run -- learn-value` from
+the repository root. The [experience lesson](EXPERIENCE_LESSON.md) explains the
+observations, per-entry visit counts, and exact comparison. The implementation
+in [`src/experience.rs`](../src/experience.rs) keys values by `(h, state)` and
+updates online using learning rate `1 / visits` for each entry.
 
 ## Problem it solves
 
@@ -2116,10 +2141,10 @@ Monte Carlo waits for the full return.
 
 Temporal-difference learning updates from one transition.
 
-TD(0) target:
+TD(0) target with `h` steps remaining:
 
 \[
-r_t + \gamma V(s_{t+1})
+r_t + \gamma V_{h-1}(s_{t+1})
 \]
 
 TD error:
@@ -2127,15 +2152,15 @@ TD error:
 \[
 \delta_t
 =
-r_t + \gamma V(s_{t+1}) - V(s_t)
+r_t + \gamma V_{h-1}(s_{t+1}) - V_h(s_t)
 \]
 
 Update:
 
 \[
-V(s_t)
+V_h(s_t)
 \leftarrow
-V(s_t) + \alpha \delta_t
+V_h(s_t) + \alpha \delta_t
 \]
 
 Human meaning:
@@ -2159,10 +2184,15 @@ observed reward
 TD uses an estimate to update another estimate.
 
 ```text
-V(s_t) updated using V(s_{t+1})
+V_h(s_t) updated using V_(h-1)(s_{t+1})
 ```
 
 This is called bootstrapping.
+
+Terminal and zero-horizon continuation values are fixed at zero; the arriving
+reward still counts. This is the finite-horizon objective used by both learner
+and exact evaluator. An external observation cutoff in a continuing task has
+different semantics and need not disable bootstrapping.
 
 Tradeoff:
 
@@ -2267,7 +2297,10 @@ Q-learning target:
 value of best estimated next action
 ```
 
-The current program does not need either because it already knows the model and can calculate exact expectations.
+The exact planning commands can evaluate known-model expectations directly.
+The implemented sampled learner estimates state values for a fixed policy;
+SARSA and Q-learning control loops remain future work. The separate Q-learning
+target exercise is only one building block of such a loop.
 
 Q-learning becomes useful when:
 
@@ -2292,12 +2325,12 @@ r
 \sum_{a'}\pi(a' \mid s')Q(s',a')
 \]
 
-This is conceptually close to the current program’s use of exact expectation over policy branches.
+This is conceptually close to the exact planner's expectation over policy branches.
 
 Difference:
 
 ```text
-current program:
+exact planner:
 known transition model + exact tree
 
 Expected SARSA:
@@ -2623,7 +2656,7 @@ Model predictive control repeatedly:
 4. replan
 ```
 
-The current program plans from `JustMet` once.
+The exact planning commands evaluate futures from `JustMet` without executing actions.
 
 An online agent could re-evaluate after every observation.
 
@@ -2692,7 +2725,9 @@ act in real world
 → update value/policy again
 ```
 
-The current program contains the planning half with a manually known model.
+The exact planning commands use a manually known model. The `learn-value`
+command learns values from simulator observations, but does not learn a model
+or add extra planning updates from one.
 
 A Dyna version would learn `DatingWorld` probabilities from observed transitions and use that learned model for extra planning updates.
 
@@ -2779,14 +2814,14 @@ This combination can diverge without care.
 
 # 62. Online versus offline learning
 
-**NEXT TECHNIQUE**
+**IMPLEMENTED: online value updates in a simulator; offline learning remains future work**
 
 Online:
 
 ```text
 agent acts
 → receives new data
-→ updates during deployment
+→ updates after each observed transition
 ```
 
 Offline:
@@ -2800,7 +2835,9 @@ Online can adapt but creates safety and exploration risks.
 
 Offline is operationally safer but constrained by dataset coverage.
 
-The current program is neither learning mode; it plans over a fixed known model.
+The `learn-value` command performs online TD updates from new simulator
+observations. The exact planning commands perform no learning updates, and
+`td-trace` is a supplied arithmetic demonstration rather than offline RL training.
 
 ---
 
@@ -3122,9 +3159,9 @@ Use this table as orientation, not memorization.
 | Technique | Main problem solved | Needs known model? | Learns from samples? | Relation to this program |
 |---|---|---:|---:|---|
 | Exact tree enumeration | Tiny planning problem | Yes | No | Implemented |
-| Dynamic programming | Repeated state subproblems | Yes | No | Compresses the tree |
+| Dynamic programming | Repeated state subproblems | Yes | No | Implemented finite-horizon evaluator |
 | Monte Carlo | Model unavailable or tree too large | No | Yes | Samples trajectories |
-| TD learning | Learn before episode ends | No | Yes | Bootstraps state values |
+| TD learning | Learn before episode ends | No | Yes | Implemented fixed-policy finite-horizon evaluator |
 | SARSA | On-policy action-value learning | No | Yes | Learns actual behavior policy |
 | Q-learning | Off-policy greedy action values | No | Yes | Learns target policy from exploratory data |
 | Policy gradient | High-dimensional stochastic policy | No | Yes | Replaces grid search with gradients |
@@ -3156,7 +3193,7 @@ Answer without looking back.
 14. What is the difference between horizon and discount?
 15. How is a trajectory probability constructed?
 16. Why does exact enumeration become expensive?
-17. What does `Vπ(s)` summarize?
+17. What does `V_hπ(s)` summarize, and why does `h` matter?
 18. What does Bellman decomposition reuse?
 19. How does Monte Carlo differ from exact enumeration?
 20. What does TD bootstrap?
@@ -3165,7 +3202,7 @@ Answer without looking back.
 23. Why can grid search handle one parameter but not millions?
 24. What does a critic provide to an actor?
 25. Why can expected return hide unacceptable risk?
-26. What makes this code planning rather than experience-driven learning?
+26. What distinguishes the exact planning commands from the sampled `learn-value` command?
 27. What would have to become unknown for Q-learning to make sense?
 28. What would a Dyna version learn?
 29. Why can a longer model rollout amplify model error?
@@ -3209,7 +3246,7 @@ replace repeated tree expansion with values, sampling, or gradients
 
 The one-sentence memory hook:
 
-> The program is an exact probabilistic planner: the policy branches into choices, the world branches into consequences, path probabilities multiply, trajectory rewards accumulate, and expectation compresses the entire future tree into one policy score.
+> The exact planner branches over choices and consequences, multiplies path probabilities, accumulates rewards, and averages the future tree into one policy score. The sampled learner instead updates value estimates from observed transitions.
 
 The one diagram to remember:
 

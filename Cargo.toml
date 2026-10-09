@@ -1,8 +1,5 @@
-[package]
-name = "rizz-rl"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-tracing = { version = "0.1.44", features = ["default"] }
-tracing-subscriber = { version = "0.3.23", features = ["serde"] }
+[workspace]
+members = ["level-1-rl-expanded"]
+default-members = ["level-1-rl-expanded"]
+exclude = ["scratch/original"]
+resolver = "2"

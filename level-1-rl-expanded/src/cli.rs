@@ -1,19 +1,21 @@
-//! Small experiments that expose one concept at a time.
+//! Command-line parsing and presentation for one-concept experiments.
 
 use std::process::ExitCode;
 
-use super::{
-    discounted_return, enumerate_trajectories, expected_return_of, expected_value,
-    possible_transitions, Action, DatingWorld, Policy, State, Trajectory, Transition,
-};
+use tracing::Level;
 
-const MAX_HORIZON: usize = 6;
-const HELP: &str = "A small laboratory for exact known-model planning.
-This program evaluates policies; it does not learn from samples.
+use crate::model::{Action, DatingWorld, Policy, State, Transition};
+use crate::planning::{
+    best_policy, discounted_return, enumerate_trajectories, evaluate_policy_grid,
+    expected_return_of, possible_transitions, Trajectory,
+};
+use crate::probability::expected_value;
+use crate::MAX_HORIZON;
+
+const HELP: &str = "A small laboratory for planning and learning policy values.
+Planning commands evaluate a known model exactly; learn-value uses sampled episodes.
 
 From the repository root:
-  cargo run --manifest-path level-1-rl-expanded/Cargo.toml -- [COMMAND] [OPTIONS]
-From level-1-rl-expanded:
   cargo run -- [COMMAND] [OPTIONS]
 
 Commands:
@@ -22,16 +24,20 @@ Commands:
   evaluate    Score one policy by enumerating all represented trajectories
   sweep       Score all 11 boldness values from 0.0 to 1.0 (default command)
   compare     Compare trajectory enumeration with Bellman evaluation at H=0..H
+  learn-value Estimate a fixed policy's value from sampled episodes
+  td-trace    Follow a supplied deterministic TD update, including termination
 
 Options:
-  --boldness B  Finite number in [0, 1]; default 0.3 (evaluate, compare)
-  --horizon H   Integer in [0, 6]; default 5 (evaluate, sweep, compare)
-  --discount G  Finite number in [0, 1]; default 0.95 (returns, evaluate, sweep, compare)
+  --boldness B  Finite number in [0, 1]; default 0.3 (evaluate, compare, learn-value)
+  --horizon H   Integer in [0, 6]; default 5 (evaluate, sweep, compare, learn-value)
+  --discount G  Finite number in [0, 1]; default 0.95 (returns, evaluate, sweep, compare, learn-value)
+  --episodes N Integer in [1, 1000000]; default 10000 (learn-value)
+  --seed S     Unsigned 64-bit integer; default 7 (learn-value)
   --verbose     Show algorithm traces on stderr
   --help, -h    Show this help
 
 The horizon is bounded because exact trajectory enumeration grows rapidly.
-Example from this crate: cargo run -- compare --horizon 4 --discount 0.5";
+Example: cargo run -- compare --horizon 4 --discount 0.5";
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Evaluation {
@@ -47,6 +53,8 @@ enum Command {
     Evaluate(Evaluation),
     Sweep { horizon: usize, discount: f64 },
     Compare(Evaluation),
+    LearnValue(super::experience::LearningConfig),
+    TdTrace,
     Help,
 }
 
@@ -64,6 +72,8 @@ fn parse(arguments: impl IntoIterator<Item = String>) -> Result<Options, String>
     let mut boldness = None;
     let mut horizon = None;
     let mut discount = None;
+    let mut episodes = None;
+    let mut seed = None;
     let mut verbose = false;
     let mut help = false;
 
@@ -97,6 +107,28 @@ fn parse(arguments: impl IntoIterator<Item = String>) -> Result<Options, String>
                         })?,
                 );
             }
+            "--episodes" => {
+                unique(episodes.is_some(), &argument)?;
+                let raw = value(&mut arguments, &argument)?;
+                episodes = Some(
+                    raw.parse::<usize>()
+                        .ok()
+                        .filter(|count| (1..=super::experience::MAX_EPISODES).contains(count))
+                        .ok_or_else(|| {
+                            format!(
+                                "--episodes requires an integer in [1, {}]; got '{raw}'",
+                                super::experience::MAX_EPISODES,
+                            )
+                        })?,
+                );
+            }
+            "--seed" => {
+                unique(seed.is_some(), &argument)?;
+                let raw = value(&mut arguments, &argument)?;
+                seed = Some(raw.parse::<u64>().map_err(|_| {
+                    format!("--seed requires an unsigned 64-bit integer; got '{raw}'")
+                })?);
+            }
             "--verbose" => {
                 unique(verbose, &argument)?;
                 verbose = true;
@@ -105,7 +137,8 @@ fn parse(arguments: impl IntoIterator<Item = String>) -> Result<Options, String>
                 unique(help, "--help")?;
                 help = true;
             }
-            "first-step" | "returns" | "evaluate" | "sweep" | "compare" => {
+            "first-step" | "returns" | "evaluate" | "sweep" | "compare" | "learn-value"
+            | "td-trace" => {
                 if name.is_some() {
                     return Err("choose exactly one command; use --help to see examples".into());
                 }
@@ -124,14 +157,20 @@ fn parse(arguments: impl IntoIterator<Item = String>) -> Result<Options, String>
         (
             boldness.is_some(),
             "--boldness",
-            matches!(name, "evaluate" | "compare"),
+            matches!(name, "evaluate" | "compare" | "learn-value"),
         ),
         (
             horizon.is_some(),
             "--horizon",
-            matches!(name, "evaluate" | "sweep" | "compare"),
+            matches!(name, "evaluate" | "sweep" | "compare" | "learn-value"),
         ),
-        (discount.is_some(), "--discount", name != "first-step"),
+        (
+            discount.is_some(),
+            "--discount",
+            !matches!(name, "first-step" | "td-trace"),
+        ),
+        (episodes.is_some(), "--episodes", name == "learn-value"),
+        (seed.is_some(), "--seed", name == "learn-value"),
     ] {
         if provided && !allowed {
             return Err(format!(
@@ -155,6 +194,14 @@ fn parse(arguments: impl IntoIterator<Item = String>) -> Result<Options, String>
             },
             "evaluate" => Command::Evaluate(settings),
             "compare" => Command::Compare(settings),
+            "learn-value" => Command::LearnValue(super::experience::LearningConfig::new(
+                settings.boldness,
+                settings.horizon,
+                settings.discount,
+                episodes.unwrap_or(10_000),
+                seed.unwrap_or(7),
+            )?),
+            "td-trace" => Command::TdTrace,
             _ => Command::Sweep {
                 horizon: settings.horizon,
                 discount: settings.discount,
@@ -196,12 +243,14 @@ pub(super) fn run() -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    super::init_tracing(options.verbose);
+    init_tracing(options.verbose);
     if options.command == Command::Help {
         println!("{HELP}");
         return ExitCode::SUCCESS;
     }
-    println!("Exact finite-horizon planning with a known model.\n");
+    if !matches!(&options.command, Command::LearnValue(_) | Command::TdTrace) {
+        println!("Exact finite-horizon planning with a known model.\n");
+    }
     let world = DatingWorld;
     match options.command {
         Command::FirstStep => first_step(&world),
@@ -209,14 +258,87 @@ pub(super) fn run() -> ExitCode {
         Command::Evaluate(settings) => evaluate(&world, settings),
         Command::Sweep { horizon, discount } => sweep(&world, horizon, discount),
         Command::Compare(settings) => compare(&world, settings),
+        Command::LearnValue(config) => match super::experience::run(&config) {
+            Ok(output) => print!("{output}"),
+            Err(error) => {
+                eprintln!("Error: {error}");
+                return ExitCode::from(2);
+            }
+        },
+        Command::TdTrace => print!("{}", super::experience::trace()),
         Command::Help => {}
     }
     ExitCode::SUCCESS
 }
 
+fn init_tracing(verbose: bool) {
+    tracing_subscriber::fmt()
+        .with_max_level(if verbose { Level::DEBUG } else { Level::WARN })
+        .with_target(false)
+        .with_writer(std::io::stderr)
+        .with_ansi(false)
+        .compact()
+        .init();
+}
+
+// A concrete one-step worked example.
+//
+// From JustMet:
+//
+//     P(Ask)   = 0.70
+//     P(Story) = 0.30
+//
+// The world then branches conditionally:
+//
+//     P(Engaged | Ask)      = 0.80
+//     P(LowInterest | Ask)  = 0.20
+//     P(Engaged | Story)    = 0.60
+//     P(LowInterest | Story)= 0.40
+//
+// `and_then` combines them into joint path probabilities:
+//
+//     P(Ask and Engaged) = 0.70 × 0.80 = 0.56
+//
+// This function prints the same calculation from the real program data.
+fn print_first_step_walkthrough(policy: &Policy, world: &DatingWorld) {
+    let transitions = possible_transitions(policy, world, &State::JustMet);
+
+    println!(
+        r#"
+----------------------------------------------------------------
+FIRST-STEP PROBABILITY CHECKPOINT
+----------------------------------------------------------------
+The policy chooses an action.
+The world responds conditionally to that action.
+A complete branch probability is:
+
+P(action and next_state)
+=
+P(action | state) * P(next_state | state, action)
+----------------------------------------------------------------
+"#
+    );
+
+    for (transition, probability) in &transitions.outcomes {
+        println!(
+            "{:>6.1}%  {:?} --{:?} / {:+.1}--> {:?}",
+            probability * 100.0,
+            transition.from_state,
+            transition.action,
+            transition.reward,
+            transition.to_state,
+        );
+    }
+
+    println!(
+        "Total probability mass: {:.6}\n",
+        transitions.total_probability(),
+    );
+}
+
 fn first_step(world: &DatingWorld) {
     let policy = Policy { boldness: 0.3 };
-    super::print_first_step_walkthrough(&policy, world);
+    print_first_step_walkthrough(&policy, world);
     let transitions = possible_transitions(&policy, world, &State::JustMet);
     let immediate_reward = expected_value(&transitions, |transition| transition.reward);
     println!(
@@ -285,13 +407,13 @@ fn evaluate(world: &DatingWorld, settings: Evaluation) {
 fn sweep(world: &DatingWorld, horizon: usize, discount: f64) {
     println!("Horizon: {horizon} transitions | Discount: {discount}");
     println!("boldness   expected return");
-    let evaluations = super::evaluate_policy_grid(world, horizon, discount);
+    let evaluations = evaluate_policy_grid(world, horizon, discount);
     for evaluation in &evaluations {
         let boldness = evaluation.policy.boldness;
         let score = evaluation.expected_return;
         println!("{boldness:>8.1}   {score:>15.6}");
     }
-    if let Some(best) = super::best_policy(&evaluations) {
+    if let Some(best) = best_policy(&evaluations) {
         let boldness = best.policy.boldness;
         let score = best.expected_return;
         println!("Best on this grid: boldness={boldness:.1}, expected return={score:.6}");
@@ -309,7 +431,7 @@ fn compare(world: &DatingWorld, settings: Evaluation) {
         settings.boldness, settings.discount
     );
     println!("V_0(s) = 0; V_h(s) = sum p(a,s'|s) * [r + discount*V_(h-1)(s')]");
-    println!("   H    trajectories       Bellman     difference   cached subproblems");
+    println!("   H       Tree E[G]   Bellman V_h   absolute difference   cached subproblems");
     for horizon in 0..=settings.horizon {
         let score = expected_return_of(&policy, world, horizon, settings.discount);
         let value = super::values::evaluate_value(
@@ -320,7 +442,7 @@ fn compare(world: &DatingWorld, settings: Evaluation) {
             settings.discount,
         );
         println!(
-            "{horizon:>4}   {score:>13.6}   {:>11.6}   {:>12.3e}   {:>18}",
+            "{horizon:>4}   {score:>13.6}   {:>11.6}   {:>19.3e}   {:>18}",
             value.expected_return,
             (score - value.expected_return).abs(),
             value.evaluated_states
@@ -407,6 +529,43 @@ mod tests {
     }
 
     #[test]
+    fn sampled_learning_defaults_and_boundaries_are_validated() {
+        use super::super::experience::{LearningConfig, MAX_EPISODES};
+        assert_eq!(
+            arguments(&["learn-value"]).unwrap().command,
+            Command::LearnValue(LearningConfig::new(0.3, 5, 0.95, 10_000, 7).unwrap())
+        );
+        assert_eq!(
+            arguments(&[
+                "learn-value",
+                "--boldness",
+                "1",
+                "--horizon",
+                "6",
+                "--discount",
+                "0",
+                "--episodes",
+                &MAX_EPISODES.to_string(),
+                "--seed",
+                &u64::MAX.to_string(),
+            ])
+            .unwrap()
+            .command,
+            Command::LearnValue(LearningConfig::new(1.0, 6, 0.0, MAX_EPISODES, u64::MAX).unwrap())
+        );
+        assert!(arguments(&[
+            "learn-value",
+            "--episodes",
+            "1",
+            "--horizon",
+            "0",
+            "--seed",
+            "0"
+        ])
+        .is_ok());
+    }
+
+    #[test]
     fn rejects_silent_mistakes() {
         for args in [
             vec!["returns", "--boldness", "0.5"],
@@ -430,7 +589,15 @@ mod tests {
 
     #[test]
     fn help_is_available_for_each_command() {
-        for name in ["first-step", "returns", "evaluate", "sweep", "compare"] {
+        for name in [
+            "first-step",
+            "returns",
+            "evaluate",
+            "sweep",
+            "compare",
+            "learn-value",
+            "td-trace",
+        ] {
             assert_eq!(arguments(&[name, "--help"]).unwrap().command, Command::Help);
         }
         assert_eq!(arguments(&["-h"]).unwrap().command, Command::Help);

@@ -1,17 +1,20 @@
-# Interactive RL Labs for the Level 1.5 Rust Program
+# Optional extensions for the Rust RL lab
 
-These labs turn the probability-tree program into an active-learning course.
+These optional extensions explore changes to the reference lab. They are a task bank, not the required learning route.
 
 Start with the six short sessions in [LEARNING_PATH.md](LEARNING_PATH.md).
 These longer labs remain optional extensions. All commands in this file run
-from `level-1-rl-expanded`.
+from the repository root. Several labs ask you to implement new behavior;
+their proposed features are not all present in the reference program.
 
 The experiment controls now live in the CLI, so Labs 5 and 6 no longer require
-editing `main`. For example, run `cargo run -- sweep --horizon 2 --discount 0.5`.
+editing source. For example, run `cargo run -- sweep --horizon 2 --discount 0.5`.
 Use `cargo run -- --help` for supported commands and bounds. Lab 12 has a worked
 implementation in [`src/values.rs`](../src/values.rs); reconstruct it yourself
 before reading that file if you want an independent exercise.
 
+Use the [source map](../README.md#source-map) to find the relevant module.
+Record attempts and later retrieval in the [learning record](LEARNING_RECORD.md).
 Use this loop for every experiment:
 
 ```text
@@ -686,23 +689,47 @@ greedy improvement
 
 ---
 
-# Lab 14 — Policy improvement
+# Lab 14: Policy improvement depends on the remaining horizon
 
-Using the Q-values from Lab 13, create a deterministic greedy policy:
+Using the finite-horizon Q-values from Lab 13, create a deterministic greedy policy:
 
 ```text
-π_new(s) = argmax_a Q(s,a)
+π_new(h,s) = argmax_a Q(h,s,a)
 ```
 
-Then evaluate it.
+Here `h` is the number of transitions remaining. The greedy decision may differ
+at the same state when there is less time left. Decrease `h` after every step;
+store decisions by `(h, state)` and use a consistent tie rule.
+
+Before implementing the policy, calculate this separate deterministic example
+with discount `0.5`:
+
+| Action now | Rewards | Return with h=1 | Return with h=2 |
+| --- | --- | ---: | ---: |
+| TakeNow | 2, then terminate | 2 | 2 |
+| Wait | 0 now, 5 next, then terminate | 0 | 0 + 0.5 * 5 = 2.5 |
+
+With one step left, TakeNow wins. With two steps left, Wait wins. A single
+decision stored only under the state cannot represent both answers. This is a
+counterexample to dropping `h`, not a claim that every state changes its best
+action at every horizon. It uses invented reward traces, not `DatingWorld`.
+
+Run its numeric check from the repository root:
+
+```bash
+cargo test values::tests::the_greedy_action_can_depend_on_remaining_horizon -- --exact
+```
+
+Then evaluate your improved policy using the same remaining-horizon convention.
 
 Compare with the one-parameter boldness family.
 
 Question:
 
-> Can a state-by-state policy outperform every policy expressible by one global boldness number?
+> Can a policy that chooses separately for each `(h, state)` outperform every policy expressible by one global boldness number?
 
-Likely yes, because one parameter couples behavior across states.
+It has more freedom than the one-parameter family. Measure the return rather
+than assuming a strict improvement: the best returns can also tie.
 
 Concept:
 

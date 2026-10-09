@@ -47,6 +47,14 @@ fn worked_examples_match_independent_hand_calculations() {
 #[test]
 fn two_evaluators_agree_through_the_default_horizon() {
     let output = success(&["compare"]);
+    for quantity in [
+        "Tree E[G]",
+        "Bellman V_h",
+        "absolute difference",
+        "cached subproblems",
+    ] {
+        assert!(output.contains(quantity));
+    }
     assert!(output.matches("3.103947").count() >= 2);
 }
 
@@ -61,7 +69,15 @@ fn zero_horizon_and_zero_discount_are_valid_experiments() {
 #[test]
 fn help_is_available_without_running_a_policy_search() {
     let output = success(&["--help"]);
-    for command in ["first-step", "returns", "evaluate", "sweep", "compare"] {
+    for command in [
+        "first-step",
+        "returns",
+        "evaluate",
+        "sweep",
+        "compare",
+        "learn-value",
+        "td-trace",
+    ] {
         assert!(output.contains(command));
     }
     assert!(!output.contains("3.103947"));
@@ -83,12 +99,89 @@ fn malformed_experiments_fail_before_printing_lesson_results() {
         vec!["evaluate", "--discount", "0.5", "--discount", "0.9"],
         vec!["returns", "--horizon", "3"],
         vec!["sweep", "--boldness", "0.3"],
+        vec!["learn-value", "--episodes", "0"],
+        vec!["learn-value", "--episodes", "1000001"],
+        vec!["learn-value", "--episodes", "-1"],
+        vec!["learn-value", "--episodes", "1.5"],
+        vec!["learn-value", "--episodes"],
+        vec!["learn-value", "--episodes", "1", "--episodes", "2"],
+        vec!["learn-value", "--seed", "-1"],
+        vec!["learn-value", "--seed", "1.5"],
+        vec!["learn-value", "--seed", "18446744073709551616"],
+        vec!["learn-value", "--seed"],
+        vec!["learn-value", "--seed", "1", "--seed", "2"],
+        vec!["learn-value", "--horizon", "7"],
+        vec!["learn-value", "--discount", "NaN"],
+        vec!["learn-value", "--boldness", "inf"],
+        vec!["evaluate", "--episodes", "10"],
+        vec!["sweep", "--seed", "1"],
+        vec!["td-trace", "--episodes", "1"],
+        vec!["td-trace", "--seed", "1"],
+        vec!["td-trace", "--discount", "0.5"],
+        vec!["td-trace", "--horizon", "1"],
+        vec!["td-trace", "--boldness", "0.3"],
     ] {
         let output = run(&arguments);
         assert_eq!(output.status.code(), Some(2), "{arguments:?}");
         assert!(output.stdout.is_empty(), "{arguments:?}");
         assert!(!output.stderr.is_empty(), "{arguments:?}");
     }
+}
+
+#[test]
+fn sampled_learning_is_repeatable_for_the_same_seed_and_settings() {
+    let arguments = ["learn-value", "--episodes", "256", "--seed", "19"];
+    let first = success(&arguments);
+    assert_eq!(first, success(&arguments));
+    for label in [
+        "Sampled TD(0) evaluation of a fixed policy.",
+        "Episodes: 256 | Seed: 19",
+        "Exact V_h(JustMet): 3.103947",
+        "Learned V_h(JustMet):",
+        "Absolute error:",
+        "Initial-state visits: 256",
+    ] {
+        assert!(first.contains(label), "missing {label:?} from {first}");
+    }
+    assert!(!first.contains("Exact finite-horizon planning with a known model."));
+}
+
+#[test]
+fn zero_horizon_learning_reports_a_base_case_without_visits() {
+    let output = success(&[
+        "learn-value",
+        "--horizon",
+        "0",
+        "--episodes",
+        "1",
+        "--seed",
+        "18446744073709551615",
+    ]);
+    for label in [
+        "Exact V_h(JustMet): 0.000000",
+        "Learned V_h(JustMet): 0.000000",
+        "Absolute error: 0.000000",
+        "Initial-state visits: 0",
+    ] {
+        assert!(output.contains(label), "missing {label:?} from {output}");
+    }
+}
+
+#[test]
+fn supplied_td_trace_exposes_terminal_targets_and_repeated_updates() {
+    let output = success(&["td-trace"]);
+    for calculation in [
+        "target=4.000000",
+        "target=3.000000",
+        "visits=2 alpha=0.500000",
+        "value=2.000000",
+    ] {
+        assert!(
+            output.contains(calculation),
+            "missing {calculation:?} from {output}"
+        );
+    }
+    assert!(!output.contains("Exact finite-horizon planning with a known model."));
 }
 
 #[test]
