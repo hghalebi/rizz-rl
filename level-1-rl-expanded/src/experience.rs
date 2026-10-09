@@ -1,4 +1,6 @@
 //! Learn a finite-horizon value from observations, then compare it with a model.
+//! Think of each value as a prediction that one new observation can correct.
+//! The policy stays fixed: correcting a value does not change action probabilities.
 //!
 //! The sampler owns policy/world access. `ValueTable::observe` only receives a
 //! transition and its remaining horizon. It never calls the model or evaluator.
@@ -55,6 +57,8 @@ impl LearningConfig {
     }
 }
 
+// Engaged with one step left and Engaged with five steps left ask different
+// questions. Both the estimate and its observation count belong to (h, state).
 #[derive(Clone, Debug, PartialEq)]
 struct ValueEntry {
     state: State,
@@ -102,6 +106,11 @@ impl ValueTable {
             .map_or(0.0, |entry| entry.value)
     }
 
+    /// Move this entry toward a one-transition target, not a full episode return.
+    /// A prediction of 4 with target 10 on its fourth visit becomes
+    /// 4 + (1/4)*(10 - 4) = 5.5. Other entries keep their own counts.
+    /// The table is borrowed mutably; the observation is only read, not rewritten.
+    /// Predict: is the first visit to a different entry also its fourth update?
     fn observe(
         &mut self,
         steps_remaining: usize,
@@ -119,6 +128,8 @@ impl ValueTable {
             return Err("an observed reward must be finite".into());
         }
         let bootstrap = self.value(&observation.to_state, steps_remaining - 1);
+        // In the supplied trace, reward 1 plus 0.5 * an estimated next value of 4
+        // gives target 3. That next value is today's estimate, not a known future.
         let target = observation.reward + self.discount.0 * bootstrap;
         let previous = self.value(&observation.from_state, steps_remaining);
         let visits = self
@@ -126,6 +137,9 @@ impl ValueTable {
             .map_or(0, |entry| entry.visits)
             .checked_add(1)
             .ok_or("visit count overflow")?;
+        // This count belongs to one (h, state), not to the whole training run.
+        // With 1/n steps, this entry averages the targets it has seen. Those
+        // targets contain changing estimates, not complete observed returns.
         let alpha = 1.0 / visits as f64;
         let value = previous + alpha * (target - previous);
         if !target.is_finite() || !value.is_finite() {
@@ -155,7 +169,11 @@ impl ValueTable {
     }
 }
 
-/// Inverse cumulative sampling with a supplied draw makes boundaries testable.
+/// Cut [0, 1) into segments whose lengths are the branch probabilities.
+/// With weights [0.25, 0.75], draw 0.2 selects the first and 0.8 the second.
+/// This is inverse cumulative sampling; supplied draws make boundaries testable.
+/// Predict: which segment owns the draw exactly at 0.25?
+/// Returning &T borrows the chosen value rather than cloning every alternative.
 /// Reject malformed distributions before drawing. Scale by their accepted mass
 /// to account only for roundoff within MASS_TOLERANCE; do not repair bad models.
 fn select_outcome<T>(distribution: &Distribution<T>, draw: f64) -> Result<&T, String> {
@@ -205,6 +223,8 @@ fn sample_transition(
     let action = select_outcome(&actions, action_draw)?;
     let next_states = world.possible_next_states(state, action);
     let next_state = select_outcome(&next_states, next_state_draw)?;
+    // These selections borrow local distributions. Clone just the chosen data
+    // into an owned observation that can outlive those temporary distributions.
     Ok(Transition {
         from_state: state.clone(),
         action: action.clone(),
@@ -217,6 +237,8 @@ fn train(config: &LearningConfig) -> Result<ValueTable, String> {
     let policy = Policy {
         boldness: config.boldness,
     };
+    // A seed repeats the draws under the same code and dependencies. Repeating
+    // an estimate does not establish its accuracy; compare it with the evaluator.
     let mut rng = ChaCha8Rng::seed_from_u64(config.seed);
     let mut table = ValueTable::new(config.discount);
     for _ in 0..config.episodes {
@@ -226,6 +248,8 @@ fn train(config: &LearningConfig) -> Result<ValueTable, String> {
             // later update in this episode cannot retroactively change this one.
             let observation =
                 sample_transition(&policy, &DatingWorld, &state, rng.random(), rng.random())?;
+            // observe borrows the record; afterward, this episode can move its
+            // next state out of the record without the table keeping a reference.
             table.observe(steps_remaining, &observation)?;
             state = observation.to_state;
             if state.is_terminal() {
@@ -240,6 +264,8 @@ pub(super) fn run(config: &LearningConfig) -> Result<String, String> {
     let table = train(config)?;
     // Only comparison code sees exact values; neither the sampler nor the
     // learner is initialized from, or updated using, these reference answers.
+    // This checks learning against the same toy model, not whether the model
+    // describes real interactions. Predict: what might one lucky seed conceal?
     let exact = super::values::evaluate_value(
         &Policy {
             boldness: config.boldness,

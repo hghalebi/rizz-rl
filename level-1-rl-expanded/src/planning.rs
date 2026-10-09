@@ -1,4 +1,8 @@
 //! Exact trajectory evaluation and search across the fixed policy grid.
+//!
+//! Ask two separate questions: what does one possible history earn, and how
+//! good is the policy across all histories? The data flow keeps them separate:
+//! possible histories -> one return per history -> probability-weighted score.
 
 use tracing::{debug, debug_span, info, info_span, warn};
 
@@ -23,6 +27,12 @@ struct ConversationPath {
 // into:
 //
 // State -----------> Distribution<Transition>
+//
+// From JustMet, Ask has chance 0.70 and Engaged given Ask has chance 0.80.
+// Their complete branch weighs 0.70 * 0.80 = 0.56; the second chance is conditional.
+// Each possible consequence owns a Transition, so the shared action is cloned.
+// Predict: if Ask's chance halves and the remaining mass moves to Story, does
+// the conditional chance of Engaged given Ask change?
 pub(crate) fn possible_transitions(
     policy: &Policy,
     world: &DatingWorld,
@@ -59,6 +69,9 @@ fn extend_one_step(
     world: &DatingWorld,
     path: ConversationPath,
 ) -> Distribution<ConversationPath> {
+    // The reward for arriving at Goodbye is already in this history. Keeping
+    // the stopped path preserves that reward and adds no further transitions.
+    // Predict: must the other, still-active histories stop at the same time?
     if path.current_state.is_terminal() {
         return Distribution::certain(path);
     }
@@ -69,7 +82,8 @@ fn extend_one_step(
     possible_transitions(policy, world, &current_state).map(|transition| {
         let next_state = transition.to_state.clone();
 
-        // Each future branch needs an independent copy of the history.
+        // Moving the history into one child would leave none for the others.
+        // Each branch copies the common past, then appends its own transition.
         let mut extended_trajectory = trajectory_so_far.clone();
         extended_trajectory.push(transition);
 
@@ -86,6 +100,8 @@ fn extend_one_step(
 // Horizon = how many interaction steps we inspect.
 //
 // This is exact enumeration, not Monte Carlo sampling.
+// At horizon zero, the one empty history represents "nothing has happened yet".
+// Consuming each layer lets and_then replace it with all its owned continuations.
 pub(crate) fn enumerate_trajectories(
     policy: &Policy,
     world: &DatingWorld,
@@ -114,6 +130,10 @@ pub(crate) fn enumerate_trajectories(
 // CHECKPOINT 7 — DISCOUNTED RETURN: SCORE ONE TRAJECTORY
 // ============================================================================
 // G = r₀ + discount*r₁ + discount²*r₂ + ...
+/// Score consecutive rewards along one history, before considering its chance.
+/// With rewards [1, 2, 4] and discount 0.5: 1 + 0.5*2 + 0.25*4 = 3.
+/// Borrowing the trajectory lets us score it without consuming its transitions.
+/// Predict: would swapping the first and last rewards preserve this return?
 pub(crate) fn discounted_return(trajectory: &Trajectory, discount: f64) -> f64 {
     let mut total_return = 0.0;
     let mut current_discount_weight = 1.0;
@@ -128,7 +148,12 @@ pub(crate) fn discounted_return(trajectory: &Trajectory, discount: f64) -> f64 {
     total_return
 }
 
-// Evaluate a fixed policy from the JustMet state.
+/// Evaluate a fixed policy from JustMet by averaging its possible returns.
+/// Suppose two histories return 2 and 6 with probabilities 0.75 and 0.25:
+/// their expected return is 3, even though neither history earns exactly 3.
+/// The closure borrows each history; time discounting stays inside that history,
+/// while expected_value applies its probability weight outside it.
+/// Predict: could a guaranteed return of 3 hide a different risk from this pair?
 pub(crate) fn expected_return_of(
     policy: &Policy,
     world: &DatingWorld,
@@ -177,6 +202,9 @@ pub(crate) struct PolicyEvaluation {
     pub(crate) expected_return: f64,
 }
 
+/// Compare eleven behavior rules under the same world, horizon, and discount.
+/// Only boldness changes; the search does not learn new world probabilities.
+/// Predict: if 0.3 wins this grid, what do we know about the untested value 0.34?
 pub(crate) fn evaluate_policy_grid(
     world: &DatingWorld,
     horizon: usize,

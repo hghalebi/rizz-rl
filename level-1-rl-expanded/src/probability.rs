@@ -1,4 +1,9 @@
 //! Weighted alternatives, composition, and expectation.
+//!
+//! Picture a list of possible futures with a probability written beside each.
+//! `map` changes what each future contains; `and_then` lets it branch again.
+//! These operations keep all represented possibilities. Randomly choosing one
+//! possibility is a separate operation in `experience.rs`.
 
 // ============================================================================
 // CHECKPOINT 1 — REPRESENTING UNCERTAINTY
@@ -15,6 +20,10 @@
 // ├── Playful     @ 0.55
 // ├── Engaged     @ 0.25
 // └── LowInterest @ 0.20
+//
+// A row represents a branch, so two rows may contain the same value. This small
+// teaching type does not validate its weights: callers must supply finite,
+// nonnegative probabilities whose total is one before interpreting them as such.
 #[derive(Debug, Clone)]
 pub(crate) struct Distribution<T> {
     pub(crate) outcomes: Vec<(T, f64)>,
@@ -31,6 +40,11 @@ impl<T> Distribution<T> {
     // `map` changes every value while preserving every branch probability.
     //
     //     T @ p  ----transform---->  U @ p
+    //
+    // Example: ASCII labels "cat" @ 0.7 and "rust" @ 0.3 become byte lengths
+    // 3 @ 0.7 and 4 @ 0.3. The branch weights stay; only their values change.
+    // Taking `self` gives the loop ownership of each T, so it can consume a
+    // String without cloning it. After this call, use the returned distribution.
     pub(crate) fn map<U>(self, transform: impl Fn(T) -> U) -> Distribution<U> {
         let mut transformed_outcomes = Vec::with_capacity(self.outcomes.len());
 
@@ -51,6 +65,12 @@ impl<T> Distribution<T> {
     //
     // 1. reaching the current branch;
     // 2. taking the next branch.
+    //
+    // Ask has probability 0.7; Engaged conditional on Ask has probability 0.8.
+    // Their complete branch has weight 0.7 * 0.8 = 0.56. This uses a conditional
+    // probability; it does not assume the world's response is independent of Ask.
+    // Total mass stays one if the input and every continuation are normalized.
+    // Predict: what happens to a weight of 0.2 when its continuation splits evenly?
     pub(crate) fn and_then<U>(self, next_step: impl Fn(T) -> Distribution<U>) -> Distribution<U> {
         let mut combined_outcomes = Vec::new();
 
@@ -70,6 +90,7 @@ impl<T> Distribution<T> {
         }
     }
 
+    // Count represented branches, not distinct values or observed samples.
     pub(crate) fn number_of_outcomes(&self) -> usize {
         self.outcomes.len()
     }
@@ -85,6 +106,8 @@ impl<T> Distribution<T> {
 
 impl<T: PartialEq> Distribution<T> {
     // Different branches can produce the same value. Sum all such branches.
+    // For example, Ask and Story can both reach Engaged. Those alternative paths
+    // contribute to one event; equality (`PartialEq`) tells us which rows belong.
     pub(crate) fn probability_of(&self, target: &T) -> f64 {
         self.outcomes
             .iter()
@@ -98,6 +121,12 @@ impl<T: PartialEq> Distribution<T> {
 // CHECKPOINT 8 — EXPECTATION: COLLAPSE MANY FUTURES INTO ONE SCORE
 // ============================================================================
 // E[value] = Σ probability(outcome) × value(outcome)
+// Read this as: score each possible outcome, then average using its chance.
+// A reward of +1 with probability 0.74 and -2 with probability 0.26 has expectation
+// 0.22. No single outcome needs to equal that average. Unlike a sample average,
+// this loop uses the supplied probabilities, so it needs no division by row count.
+// `&Distribution<T>` and `&T` borrow the data: scoring leaves it available for
+// another question, such as the probability of a particular event.
 pub(crate) fn expected_value<T>(
     distribution: &Distribution<T>,
     value_of: impl Fn(&T) -> f64,
