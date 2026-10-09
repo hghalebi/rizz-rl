@@ -1,4 +1,9 @@
 //! Command-line parsing and presentation for one-concept experiments.
+//!
+//! Treat a command as a small controlled experiment: change one setting while
+//! keeping the others fixed, and predict the result. This module translates
+//! text into settings and displays results; the numerical rules live in the
+//! domain modules, so the same rules can be tested without typing commands.
 
 use std::process::ExitCode;
 
@@ -229,6 +234,8 @@ fn value(arguments: &mut impl Iterator<Item = String>, flag: &str) -> Result<Str
 }
 
 fn unit_interval(raw: &str, flag: &str) -> Result<f64, String> {
+    // Parsing "NaN" or "inf" can succeed as an f64. A number that Rust can store
+    // is not necessarily a meaningful probability or discount for this lesson.
     raw.parse::<f64>()
         .ok()
         .filter(|number| number.is_finite() && (0.0..=1.0).contains(number))
@@ -272,6 +279,8 @@ pub(super) fn run() -> ExitCode {
 }
 
 fn init_tracing(verbose: bool) {
+    // Keep the experiment's answer on stdout and its detailed working on stderr.
+    // Turning on diagnostics should help explain a result without changing it.
     tracing_subscriber::fmt()
         .with_max_level(if verbose { Level::DEBUG } else { Level::WARN })
         .with_target(false)

@@ -3,6 +3,9 @@
 //! If two histories reach the same state with the same number of steps left,
 //! their remaining expected return is identical in this Markov model.
 //! Cache that answer and reuse it: this is finite-horizon dynamic programming.
+//! In a separate deterministic example, rewards 0 now and 5 next are worth 2.5
+//! at discount 0.5 with two steps left, but 0 with only one step left.
+//! Predict: which answer would a cache keyed only by state wrongly reuse?
 //!
 //! ```text
 //! V_0(s) = 0; V_h(terminal) = 0
@@ -32,6 +35,8 @@ struct CachedValue {
 
 /// Evaluate a fixed policy with a fresh cache. The caller supplies gamma in [0, 1].
 /// A small Vec makes cache inspection easy without requiring State to be Hash.
+/// Starting fresh also prevents another policy or discount from inheriting these
+/// answers. Recursive calls borrow this one cache instead of copying its entries.
 pub(super) fn evaluate_value(
     policy: &Policy,
     world: &DatingWorld,
@@ -55,6 +60,9 @@ fn value_for(
     discount: f64,
     cache: &mut Vec<CachedValue>,
 ) -> f64 {
+    // This is the value of what comes AFTER arriving here. The caller still
+    // counts the arriving reward. Horizon zero ends this finite objective,
+    // even if the environment state itself is not terminal.
     if steps_remaining == 0 || state.is_terminal() {
         return 0.0;
     }
@@ -63,6 +71,7 @@ fn value_for(
         .iter()
         .find(|entry| entry.state == *state && entry.steps_remaining == steps_remaining)
     {
+        // An f64 is Copy: return the answer without taking its entry out of storage.
         return cached.expected_return;
     }
 
@@ -79,9 +88,13 @@ fn value_for(
             discount,
             cache,
         );
+        // First score the branch, then weight how likely it is. A hypothetical
+        // reward 2 plus discounted future 0.5*4 gives 4; chance 0.25 contributes 1.
+        // Predict: does zero continuation value also erase the immediate reward?
         expected_return += probability * (transition.reward + discount * future_value);
     }
 
+    // The cache owns its state key after this borrowed state goes out of scope.
     cache.push(CachedValue {
         state: state.clone(),
         steps_remaining,
