@@ -20,7 +20,7 @@ Advance after an **unaided explanation and a correct changed case**. Confidence 
 cargo run -- first-step
 ```
 
-**Read:** [`State`, `Action`, and `Policy::possible_actions`](../src/model.rs), then [`possible_transitions`](../src/planning.rs). Follow one use of [`Distribution::and_then`](../src/probability.rs).
+**Read:** [`State` and `Action`](../src/model/state.rs) and [`Policy::possible_actions`](../src/model/policy.rs), then [`possible_transitions`](../src/planning/transitions.rs). Follow one use of [`Distribution::and_then`](../src/probability/composition.rs).
 
 <details>
 <summary>Conceptual hint</summary>
@@ -28,6 +28,12 @@ cargo run -- first-step
 Separate a probability conditional on choosing an action from the probability of the complete action-and-response path. Ask which events require both steps and which combine alternative paths.
 
 </details>
+
+**Check yourself:** [`first_step_joint_probabilities_match_the_hand_calculation`](../src/tests.rs) asserts the two branch chances you just predicted, 0.56 and 0.12. Open it, predict each number it asserts, then run:
+
+```bash
+cargo test tests::first_step_joint_probabilities_match_the_hand_calculation -- --exact
+```
 
 **Explain and change:** who controls each probability? Why can different branches reach `Engaged`? Check total probability, then change one action probability on paper while preserving the total and predict the new result.
 
@@ -45,7 +51,7 @@ cargo run -- returns --discount 0.5
 cargo run -- returns --discount 1
 ```
 
-**Read:** [`discounted_return`](../src/planning.rs) and [`expected_value`](../src/probability.rs). Identify the loop's evolving weight and the borrowed input to `Fn(&T) -> f64`.
+**Read:** [`discounted_return`](../src/planning/returns.rs) and [`expected_value`](../src/probability/expectation.rs). Identify the loop's evolving weight and the borrowed input to `Fn(&T) -> f64`.
 
 <details>
 <summary>Conceptual hint</summary>
@@ -53,6 +59,12 @@ cargo run -- returns --discount 1
 Time weights act inside one path. Probability weights compare alternative paths. Identify which kind of weight each loop uses.
 
 </details>
+
+**Check yourself:** [`the_greedy_action_can_depend_on_remaining_horizon`](../src/values/tests.rs) scores two supplied histories, and the same history is worth 0 with one step counted but 2.5 with two. Open it, predict each number it asserts, then run:
+
+```bash
+cargo test values::tests::the_greedy_action_can_depend_on_remaining_horizon -- --exact
+```
 
 **Explain and change:** why is the first reward undiscounted? Can an expectation differ from every individual outcome? Predict a new reward sequence containing a negative reward and check it by hand.
 
@@ -70,7 +82,7 @@ cargo run -- evaluate --horizon 1
 cargo run -- evaluate --horizon 5
 ```
 
-**Read:** [`State::is_terminal`](../src/model.rs), then [`extend_one_step` and `enumerate_trajectories`](../src/planning.rs). Locate borrowed inputs, the consumed trajectory, and cloned branch histories.
+**Read:** [`State::is_terminal`](../src/model/state.rs), then [`extend_one_step` and `enumerate_trajectories`](../src/planning/rollout.rs). Locate borrowed inputs, the consumed trajectory, and cloned branch histories.
 
 <details>
 <summary>Conceptual hint</summary>
@@ -78,6 +90,12 @@ cargo run -- evaluate --horizon 5
 Ask separately whether the world can continue and whether this objective assigns value beyond the remaining horizon. `MutualInterest` and `Goodbye` have different roles here.
 
 </details>
+
+**Check yourself:** [`reaching_goodbye_stops_history_without_losing_probability`](../src/tests.rs) asserts that every history from `LowInterest` has exactly one step, ends in `Goodbye`, and still keeps its reward of 2. Open it, predict each number it asserts, then run:
+
+```bash
+cargo test tests::reaching_goodbye_stops_history_without_losing_probability -- --exact
+```
 
 **Explain and change:** why must terminal paths stop collecting rewards? Explain a robot task that ends at a deadline and a continuing task whose observation file merely stops. Would a longer horizon always improve a return containing penalties?
 
@@ -94,7 +112,7 @@ cargo run -- compare --horizon 5
 cargo run -- compare --horizon 5 --discount 0
 ```
 
-**Read:** [`values::evaluate_value`](../src/values.rs) beside [`expected_return_of`](../src/planning.rs). Start at zero remaining steps, then inspect the next row.
+**Read:** [`values::evaluate_value`](../src/values.rs) beside [`expected_return_of`](../src/planning/evaluation.rs). Start at zero remaining steps, then inspect the next row.
 
 <details>
 <summary>Conceptual hint</summary>
@@ -102,6 +120,12 @@ cargo run -- compare --horizon 5 --discount 0
 Two histories can have the same remaining problem. Identify all the information needed to describe that problem, including the steps left.
 
 </details>
+
+**Check yourself:** [`bellman_matches_complete_tree_across_states_horizons_and_parameters`](../src/values/tests.rs) asserts that the two evaluators agree for every state, horizon, discount, and boldness it tries. Open it, predict each number it asserts, then run:
+
+```bash
+cargo test values::tests::bellman_matches_complete_tree_across_states_horizons_and_parameters -- --exact
+```
 
 **Explain and change:** why does a value depend on both state and horizon? Distinguish averaging actions under a policy from choosing a maximizing action. Change the discount and explain why evaluator agreement does not establish that the invented model is realistic.
 
@@ -119,7 +143,7 @@ cargo run -- evaluate --boldness 0.3 --horizon 5 --discount 0.95
 cargo run -- evaluate --boldness 1 --horizon 5 --discount 0.95
 ```
 
-**Read:** [`evaluate_policy_grid` and `best_policy`](../src/planning.rs), then [`Policy::possible_actions`](../src/model.rs). Find the `Option` representing an empty candidate set.
+**Read:** [`evaluate_policy_grid` and `best_policy`](../src/planning/search.rs), then [`Policy::possible_actions`](../src/model/policy.rs). Find the `Option` representing an empty candidate set.
 
 <details>
 <summary>Conceptual hint</summary>
@@ -127,6 +151,12 @@ cargo run -- evaluate --boldness 1 --horizon 5 --discount 0.95
 A search can establish a winner only among the candidates it evaluates. Separately ask whether the policy changes in response to observations.
 
 </details>
+
+**Check yourself:** [`zero_discount_does_not_create_a_spurious_preference_for_boldness`](../src/tests.rs) asserts that at discount 0 all eleven candidates score 0.22, and the reported winner is boldness 0.0. Open it, predict each number it asserts, then run:
+
+```bash
+cargo test tests::zero_discount_does_not_create_a_spurious_preference_for_boldness -- --exact
+```
 
 **Explain and change:** what does the eleven-candidate result establish? Why is policy randomness alone insufficient to describe a learning exploration strategy? Try another horizon and justify comparing candidates under identical settings.
 
@@ -169,7 +199,13 @@ cargo run -- td-trace
 cargo run -- learn-value --episodes 10000 --seed 7
 ```
 
-**Read and explain:** [`experience.rs`](../src/experience.rs) separates the model-driven sampler from the observation-driven learner. Explain why the value table uses both state and steps remaining and why terminal or zero-horizon continuations do not bootstrap.
+**Read and explain:** [`experience.rs`](../src/experience.rs) lists one file per step; it separates the model-driven sampler from the observation-driven learner. Explain why the value table uses both state and steps remaining and why terminal or zero-horizon continuations do not bootstrap.
+
+**Check yourself:** [`supplied_trace_uses_bootstrap_and_per_entry_visit_counts`](../src/experience/tests.rs) asserts the target 3, the learning rate 0.5, and the new value 2 from the supplied trace. Open it, predict each number it asserts, then run:
+
+```bash
+cargo test experience::tests::supplied_trace_uses_bootstrap_and_per_entry_visit_counts -- --exact
+```
 
 **Changed case and next:** compare several seeds and episode budgets using the lesson. Explain why the error can rise in a particular run even when the budget grows. This learner evaluates a fixed policy; it does not optimize boldness or implement Q-learning control. Record your attempt, then revisit a changed-context prompt later.
 
@@ -177,12 +213,12 @@ cargo run -- learn-value --episodes 10000 --seed 7
 
 | RL idea | Symbol | Rust location |
 | --- | --- | --- |
-| State / action | `s`, `a` | [`State`, `Action`](../src/model.rs) |
-| Policy / world response | `π(a ∣ s)`, `P(s' ∣ s,a)` | [`Policy::possible_actions`, `DatingWorld::possible_next_states`](../src/model.rs) |
-| Immediate reward | `r` | [`DatingWorld::reward_for`, `Transition::reward`](../src/model.rs) |
-| Return / expectation | `G`, `E[G]` | [`discounted_return`](../src/planning.rs), [`expected_value`](../src/probability.rs) |
+| State / action | `s`, `a` | [`State`, `Action`](../src/model/state.rs) |
+| Policy / world response | `π(a ∣ s)`, `P(s' ∣ s,a)` | [`Policy::possible_actions`](../src/model/policy.rs), [`DatingWorld::possible_next_states`](../src/model/world.rs) |
+| Immediate reward | `r` | [`DatingWorld::reward_for`](../src/model/reward.rs), [`Transition::reward`](../src/model/transition.rs) |
+| Return / expectation | `G`, `E[G]` | [`discounted_return`](../src/planning/returns.rs), [`expected_value`](../src/probability/expectation.rs) |
 | Discount / remaining horizon | `γ`, `h` | `discount: f64`, `horizon: usize` |
-| Exact / learned value | `V_h(s)` / estimate of `V_h(s)` | [`values.rs`](../src/values.rs), [`experience.rs`](../src/experience.rs) |
+| Exact / learned value | `V_h(s)` / estimate of `V_h(s)` | [`values.rs`](../src/values.rs), [`experience/table.rs`](../src/experience/table.rs) |
 
 An `f64` is not automatically a valid probability. Finite nonnegative weights must sum to approximately one; numerical comparisons need a tolerance.
 

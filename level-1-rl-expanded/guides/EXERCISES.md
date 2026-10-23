@@ -31,10 +31,10 @@ The project links connect each task to a larger concept. Use them for review aft
 
 | Exercise | Objective | Rust focus | Time | Project connection |
 | --- | --- | --- | --- | --- |
-| 1. Discounted return | Score rewards across time. | Borrowed slices, loop state | 10 min | [`discounted_return`](../src/planning.rs) |
-| 2. Weighted expectation | Combine alternative outcomes. | Tuple destructuring | 10 min | [`expected_value`](../src/probability.rs) |
+| 1. Discounted return | Score rewards across time. | Borrowed slices, loop state | 10 min | [`discounted_return`](../src/planning/returns.rs) |
+| 2. Weighted expectation | Combine alternative outcomes. | Tuple destructuring | 10 min | [`expected_value`](../src/probability/expectation.rs) |
 | 3. TD target | Distinguish terminal and continuing transitions. | Explicit branching | 10 min | [Terminal states](DEEP_RL_COMPANION.md#23-terminal-and-absorbing-states) |
-| 4. Valid probabilities | Reject invalid probability distributions. | Predicates, finite values | 15 min | [`Distribution::total_probability`](../src/probability.rs) |
+| 4. Valid probabilities | Reject invalid probability distributions. | Predicates, finite values | 15 min | [`Distribution::total_probability`](../src/probability/distribution.rs) |
 | 5. Greedy action | Select an action from estimated values. | Indices, `Option<usize>` | 10 min | [Policy improvement](DEEP_RL_COMPANION.md#39-policy-evaluation-versus-policy-improvement) |
 | 6. Epsilon-greedy policy | Allocate action probabilities. | `Vec<f64>`, indexing | 15 min | [Exploration](DEEP_RL_COMPANION.md#50-exploration-versus-exploitation) |
 | 7. Running mean | Incorporate another observed return. | Counts and numeric conversion | 10 min | [Monte Carlo evaluation](DEEP_RL_COMPANION.md#43-monte-carlo-evaluation) |

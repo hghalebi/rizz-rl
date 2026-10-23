@@ -2876,29 +2876,38 @@ The current code checks only mass after trajectory enumeration.
 
 # 64. Parameter invariants
 
-**IMPLEMENTED PARTIALLY**
+**IMPLEMENTED**
 
-Boldness is intended to satisfy:
+Boldness must satisfy:
 
 ```text
 0 ≤ boldness ≤ 1
 ```
 
-The expanded source uses a debug assertion.
-
-A production design should use a validated constructor:
+`Policy` keeps its `boldness` field private, so other modules cannot write `Policy { boldness: 1.5 }`. They must use the validated constructor:
 
 ```text
 Policy::try_new(boldness)
 ```
 
-returning:
+which returns:
 
 ```text
 Result<Policy, InvalidBoldness>
 ```
 
-This turns a comment-level assumption into a program-enforced invariant.
+The CLI checks `--boldness` once with this constructor. After that, planning and learning receive a `Policy`, never a raw number. A comment-level assumption has become a program-enforced invariant.
+
+Two different checks protect it:
+
+| Check | Where | What it proves |
+| --- | --- | --- |
+| Compiler | Private field in [the policy file](../src/model/policy.rs) | Other modules cannot build `Policy { boldness: 1.5 }`. |
+| Runtime test | `Policy::try_new` | NaN, infinities, and values outside `[0, 1]` are rejected. |
+
+Why only boldness? Discount and horizon stay plain numbers, checked once at the CLI. That keeps the lesson arithmetic, such as `reward + discount * future_value`, reading like its formula.
+
+Predict: boldness `1.5` would make one Playful action probability greater than one. Which action, and what happens to the others?
 
 ---
 

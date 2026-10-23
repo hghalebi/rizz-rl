@@ -12,13 +12,13 @@ Start after you can explain a discounted return, a terminal transition, and one 
 | Learner | Observations, remaining steps, and discount | Updates a value table and visit counts. It does not inspect transition probabilities or exact values. |
 | Exact evaluator | The same policy, world, initial state, horizon, and discount | Computes a separate reference value for comparison after training. |
 
-The environment simulator uses the known model, while the learner sees observations. This boundary is what makes the experiment learning from experience even though the toy world was written by hand. Inspect [`ValueTable::observe` in experience.rs](../src/experience.rs) beside the separate [exact evaluator](../src/values.rs).
+The environment simulator uses the known model, while the learner sees observations. This boundary is what makes the experiment learning from experience even though the toy world was written by hand. Inspect [`ValueTable::observe` in experience/table.rs](../src/experience/table.rs) beside the separate [exact evaluator](../src/values.rs).
 
 The learned entry is `V(h, state)`, where `h` is the number of transitions remaining. A state with one step remaining and the same state with five remaining can have different values. Treating those as one table entry would change the objective.
 
 ## 2. Predict one update before training (15 minutes)
 
-All commands run **from the repository root**. Open the supplied trace in [`experience.rs`](../src/experience.rs), identify one update's inputs, and predict its target and new estimate before running:
+All commands run **from the repository root**. Open the supplied trace in [`experience/trace.rs`](../src/experience/trace.rs), identify one update's inputs, and predict its target and new estimate before running:
 
 ```bash
 cargo run -- td-trace

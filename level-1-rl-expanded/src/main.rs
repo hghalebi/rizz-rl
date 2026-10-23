@@ -6,6 +6,8 @@
 //! horizon; `values` reuses smaller exact answers; `experience` learns from
 //! observations.
 //! The learning path in guides/LEARNING_PATH.md turns that reading into tasks.
+//! Each lesson file opens with a question, an example, and a prediction, and the
+//! README lists the code's eleven numbered checkpoints in reading order.
 //!
 //! At each step, predict one small result before running the corresponding
 //! command. Then change one input and explain whether the result should change.

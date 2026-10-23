@@ -2,7 +2,7 @@
 
 The goal is to explain and implement one small computation: transform an owned
 value, continue it into possible outcomes, and preserve the weights of complete
-paths. Use the actual [`Distribution`](../src/probability.rs) from the planner.
+paths. Use the actual [`Distribution`](../src/probability/distribution.rs) from the planner; its [`map` and `and_then`](../src/probability/composition.rs) are what you practice here.
 
 Allow about five minutes for the optional diagnostic and fifteen minutes for
 the route it suggests. These are timeboxes, not speed requirements. Passing

@@ -1,0 +1,76 @@
+//! Command names: the experiment a user picks, such as `sweep` or `compare`.
+
+use std::fmt;
+use std::str::FromStr;
+
+use super::error::CliError;
+use super::flag::Flag;
+
+/// The experiment named on the command line, before its settings are known.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) enum CommandName {
+    FirstStep,
+    Returns,
+    Evaluate,
+    #[default]
+    Sweep,
+    Compare,
+    LearnValue,
+    TdTrace,
+}
+
+impl CommandName {
+    pub(super) const ALL: [Self; 7] = [
+        Self::FirstStep,
+        Self::Returns,
+        Self::Evaluate,
+        Self::Sweep,
+        Self::Compare,
+        Self::LearnValue,
+        Self::TdTrace,
+    ];
+
+    pub(super) fn as_str(self) -> &'static str {
+        match self {
+            Self::FirstStep => "first-step",
+            Self::Returns => "returns",
+            Self::Evaluate => "evaluate",
+            Self::Sweep => "sweep",
+            Self::Compare => "compare",
+            Self::LearnValue => "learn-value",
+            Self::TdTrace => "td-trace",
+        }
+    }
+
+    // The same applicability table as HELP. An exhaustive match means a new
+    // flag cannot be added without deciding which commands accept it.
+    pub(super) fn accepts(self, flag: Flag) -> bool {
+        match flag {
+            Flag::Boldness => matches!(self, Self::Evaluate | Self::Compare | Self::LearnValue),
+            Flag::Horizon => matches!(
+                self,
+                Self::Evaluate | Self::Sweep | Self::Compare | Self::LearnValue
+            ),
+            Flag::Discount => !matches!(self, Self::FirstStep | Self::TdTrace),
+            Flag::Episodes | Flag::Seed => self == Self::LearnValue,
+            Flag::Verbose | Flag::Help => true,
+        }
+    }
+}
+
+impl FromStr for CommandName {
+    type Err = CliError;
+
+    fn from_str(name: &str) -> Result<Self, Self::Err> {
+        Self::ALL
+            .into_iter()
+            .find(|command| command.as_str() == name)
+            .ok_or_else(|| CliError::UnknownArgument(name.to_owned()))
+    }
+}
+
+impl fmt::Display for CommandName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
