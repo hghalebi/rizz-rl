@@ -3,3 +3,5 @@
 /.nvimlog
 /scratch/original/target/
 /scripts/__pycache__/
+/.idea/
+.DS_Store

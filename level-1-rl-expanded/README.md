@@ -2,6 +2,24 @@
 
 For what to study next, use the [learning path](guides/LEARNING_PATH.md). This README covers operating the reference lab. All commands run **from the repository root**. The root workspace selects this package by default and excludes the [historical scratch program](../scratch/original/README.md).
 
+## Setup
+
+Install Git and [Rust with Cargo](https://rust-lang.org/tools/install/), then clone the repository using the [root quickstart](../README.md#your-first-experiment). The first build needs a network connection to download dependencies. Running the lessons requires no API credentials or GPU.
+
+CI validates Rust 1.95.0 on Linux. To install that toolchain, including the checker's components:
+
+```bash
+rustup toolchain install 1.95.0 --profile minimal --component rustfmt,clippy
+```
+
+The complete checker also needs Python 3.9 or later. To run it with the CI toolchain without changing your global default:
+
+```bash
+rustup run 1.95.0 python3 scripts/check.py
+```
+
+If `cargo` is not found after installing Rust, reopen your terminal and check that Cargo is on your `PATH`. If an exercise stops at `todo!()`, follow the exercise instructions below; an unfinished starter is expected to fail when selected.
+
 ## Run one concept
 
 ```bash
@@ -77,6 +95,8 @@ Tests cover exact evaluator agreement, probability and terminal behavior, sample
 
 ## Reference and maintenance
 
+- [Contributing](../CONTRIBUTING.md): newcomer feedback, focused changes, and checks.
+- [Open-source launch preparation](guides/maintenance/OPEN_SOURCE_LAUNCH.md): release evidence, suggested GitHub description, and remaining publication decisions.
 - [Deep RL companion](guides/DEEP_RL_COMPANION.md): concept reference, not required reading before starting.
 - [Interactive labs](guides/INTERACTIVE_LABS.md): optional extensions; several ask you to implement new behavior.
 - [Command migration](guides/maintenance/COMMAND_MIGRATION.md): equivalents for older commands and source paths.
@@ -85,3 +105,5 @@ Tests cover exact evaluator agreement, probability and terminal behavior, sample
 - [Pedagogy review](guides/PEDAGOGY_REVIEW.md) and [improvement plan](guides/IMPROVEMENT_PLAN.md): dated research and earlier delivery history, with learner outcomes still pending.
 
 If a command selects `rizz-rl`, you are explicitly using the historical scratch manifest. Return to the repository root and use the commands above. The scratch program has different rewards and an incomplete probability distribution, so its numerical output is not the reference baseline.
+
+Code and lesson text use the [MIT license](../LICENSE). External resources and dependencies retain their own licenses.

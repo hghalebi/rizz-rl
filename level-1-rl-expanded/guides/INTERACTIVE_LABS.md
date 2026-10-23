@@ -26,7 +26,7 @@ Use this loop for every experiment:
 6. Restore or commit
 ```
 
-Do not skip prediction. Prediction is where learning happens.
+Make a prediction first: it makes your assumptions visible before you see the result.
 
 Commands:
 

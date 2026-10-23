@@ -2,6 +2,10 @@
 name = "level_1_rl_expanded"
 version = "0.1.0"
 edition = "2021"
+description = "A hands-on Rust lab for probability, finite-horizon planning, and TD value learning"
+license = "MIT"
+repository = "https://github.com/hghalebi/rizz-rl"
+readme = "README.md"
 
 [dependencies]
 rand = { version = "=0.9.2", default-features = false, features = ["std"] }
