@@ -1,181 +1,288 @@
 # Your Rust + Hugging Face RL learning path
 
-This is the project's **single learning route**. Choose one session, make a prediction, run or edit a small computation, then explain a changed case. All commands run **from the repository root**. Use the [lab README](../README.md) for setup and checks, and the [learning record](LEARNING_RECORD.md) for every assessment and restart note.
+**First visit:** start with [one decision](#session-1-follow-one-decision-15-minutes). **Returning:** open your last [quick restart note](LEARNING_RECORD.md#quick-restart) and follow its next action.
 
-The recurring question is: **given a state and a behavior rule, how good are the possible futures?** Sessions 1 to 5 make exact evaluation visible. Session 6 retrieves the arithmetic. Composition connects probability with Rust ownership; the capstone estimates values from observations.
+This page owns the learning route. All commands run **from the repository root**; setup and checks live in the [lab README](../README.md). Choose one activity, not the whole page. The time estimates are optional planning aids. If you have only a few minutes, make the prediction and leave a restart note.
+
+| Activity | What you will do |
+| --- | --- |
+| [1. One decision](#session-1-follow-one-decision-15-minutes) | Follow one action and its consequence. |
+| [2A. Return](#return-activity) | Score one reward sequence, then attempt exercise 1. |
+| [2B. Expectation](#expectation-activity) | Weight alternative outcomes, then attempt exercise 2. |
+| [3. Task endings](#session-3-find-the-end-of-the-episode-20-minutes) | Distinguish termination from a horizon cutoff. |
+| [4. Bellman values](#session-4-replace-repeated-futures-with-values-25-minutes) | Reuse a smaller future, then attempt exercise 10. |
+| [5. Policy comparison](#session-5-compare-policies-without-overclaiming-20-minutes) | Compare a fixed grid of behavior rules. |
+| [6. Recall checkpoint](#session-6-write-the-small-pieces-yourself-25-minutes) | Explain a fresh case without the reference. |
+| [Composition](#composition-lesson-combine-the-pieces-20-to-40-minutes) | Connect weighted branches with Rust ownership. |
+| [Experience](#experience-capstone-learn-values-from-observations-25-minutes) | Update values from observations. |
 
 ## Choose the support you need
 
-Start with Session 1. If ownership or conditional probability makes it difficult to follow a branch, use the two separate [composition probes](COMPOSITION_LESSON.md#1-optional-diagnostic-assess-two-skills-separately). Choose only the worked and completion support your attempt calls for, then return here. If both probes are easy to explain, you can attempt the independent composition task when you reach that lesson.
+If the difficulty is **Rust ownership**, use the [ownership probe](COMPOSITION_LESSON.md#1-optional-diagnostic-assess-two-skills-separately). If it is **conditional probability**, use the probability probe in that same section. Follow only the support your attempt calls for, then return to the current activity. Neither probe is a prerequisite exam.
 
-Advance after an **unaided explanation and a correct changed case**. Confidence is useful context, not a pass mark. If either check reveals a gap, revisit that step and try another comparable case. The timings are timeboxes, not speed requirements. You can stop with an exact restart cue rather than finish an entire exercise bank.
+For a learning check, use an unaided explanation and a correct changed case. Confidence alone is not a pass mark. Stopping is always allowed, including midway through a task. Record help used; a successful assisted attempt is useful practice, but does not establish independent recall.
 
 ## Session 1: Follow one decision (15 minutes)
 
-**Objective and prerequisite:** distinguish the agent's choice from the world's response. You need to recognize an enum variant and a weighted pair `(outcome, probability)`.
+**Purpose:** separate what the policy chooses from what the world does next. No cross-module tracing is needed yet.
 
-**Predict:** from `JustMet`, what is the probability of taking `Ask` and reaching `Engaged`? Read those two probabilities, then run:
+Here is the local model at `JustMet`. Each response probability is conditional on its row's action:
+
+| Action | Chance of choosing it | Engaged afterward | LowInterest afterward |
+| --- | ---: | ---: | ---: |
+| Ask | 0.70 | 0.80 | 0.20 |
+| Story | 0.30 | 0.60 | 0.40 |
+
+These numbers come from the `JustMet` arm in `Policy::possible_actions` and the `(JustMet, Ask)` / `(JustMet, Story)` arms in [`model.rs`](../src/model.rs).
+
+**1. Predict:** what is the probability of the complete path `JustMet -> Ask -> Engaged`?
+
+**2. Do:** run the one-step experiment.
 
 ```bash
 cargo run -- first-step
 ```
 
-**Read:** [`State`, `Action`, and `Policy::possible_actions`](../src/model.rs), then [`possible_transitions`](../src/planning.rs). Follow one use of [`Distribution::and_then`](../src/probability.rs).
+**3. Check:** compare your prediction with the `Ask -> Engaged` row. Check that the four displayed branch probabilities sum to one. Leave the reward summary for Activity 2B.
+
+**4. Explain:** on paper, change the action probabilities to Ask `0.5` and Story `0.5`, keeping the response probabilities fixed. Predict the new Ask-to-Engaged path. Explain which probability changed and which did not.
 
 <details>
-<summary>Conceptual hint</summary>
+<summary>Optional help and Rust detail</summary>
 
-Separate a probability conditional on choosing an action from the probability of the complete action-and-response path. Ask which events require both steps and which combine alternative paths.
+A complete path needs both its action and its conditional response. This does not assume the response is independent of the action. Different paths reaching the same event contribute separately to its total probability.
+
+After your attempt, compare the [worked one-step calculation](DEEP_RL_COMPANION.md#36-a-complete-one-step-calculation). For the implementation, follow [`possible_transitions`](../src/planning.rs) into [`Distribution::and_then`](../src/probability.rs). `State` and `Action` are enum alternatives; a `Vec<(T, f64)>` holds weighted branches. [Exercise 4](EXERCISES.md#4-probability-validation) is optional practice in validating those weights.
 
 </details>
 
-**Explain and change:** who controls each probability? Why can different branches reach `Engaged`? Check total probability, then change one action probability on paper while preserving the total and predict the new result.
+**Stop or next:** save a [quick restart note](LEARNING_RECORD.md#quick-restart). The default next activity is [return](#return-activity).
 
-**Feedback and next:** after your attempt, compare [the worked one-step calculation](DEEP_RL_COMPANION.md#36-a-complete-one-step-calculation). Continue to Session 2 and record your explanation in the [learning record](LEARNING_RECORD.md).
+<a id="session-2-score-a-future-then-score-uncertainty-20-minutes"></a>
+## Session 2: Return and expectation, one activity at a time
 
-## Session 2: Score a future, then score uncertainty (20 minutes)
+<a id="return-activity"></a>
+### 2A. Score one reward sequence
 
-**Objective and prerequisite:** distinguish reward, return, and expectation. Bring Session 1's distinction between one path and alternative paths.
+**Purpose:** turn rewards along one path into one return. Allow roughly 10 to 20 minutes. You need a slice and a loop, not the full planner.
 
-**Predict:** for `[1, 2, 4]`, which rewards matter at discount `0`, and what changes at `1`?
+Use rewards `[1, 2, 4]` and discount `0.5`. The first reward counts immediately. Each step of delay adds another factor of the discount. These are consecutive rewards, not alternative outcomes.
+
+**1. Predict:** calculate this path's return on paper. Which rewards would matter if the discount were zero?
+
+**2. Do:** implement only `discounted_return` in [`arithmetic/practice.rs`](../src/exercises/arithmetic/practice.rs). Its empty-input contract is in the function comment. Leave the other TODOs intact.
+
+**3. Check:** run its exact starter test.
 
 ```bash
-cargo run -- returns --discount 0
-cargo run -- returns --discount 0.5
-cargo run -- returns --discount 1
+cargo test \
+  exercises::arithmetic::practice::exercise_1_discounted_return \
+  -- --exact --ignored
 ```
 
-**Read:** [`discounted_return`](../src/planning.rs) and [`expected_value`](../src/probability.rs). Identify the loop's evolving weight and the borrowed input to `Fn(&T) -> f64`.
+An untouched TODO is an expected starting failure. A failing assertion identifies a case to compare with your prediction. Zero selected tests is not a successful check; copy the full command. The [exercise feedback guide](EXERCISES.md#attempt-one-exercise) explains the other outcomes.
+
+**4. Explain:** use `[2, -1, 4]` as a new case. Predict its return at discount `0` and at `1`, then check it using the marked learner-case space in your exercise-1 test. Explain why the first reward is undiscounted.
 
 <details>
-<summary>Conceptual hint</summary>
+<summary>Optional help, reference, and Rust detail</summary>
 
-Time weights act inside one path. Probability weights compare alternative paths. Identify which kind of weight each loop uses.
+Ask what weight applies before any time has passed, then how that weight changes after one step. The [exercise-1 card](EXERCISES.md#1-discounted-return) supplies local support.
+
+After your attempt, compare `discounted_return` in the [separate solutions](../src/exercises/arithmetic/solutions.rs). To inspect the fixed reward sequence one term at a time, use:
+
+```bash
+cargo run -- returns --discount 0.5
+```
+
+The production version in [`planning.rs`](../src/planning.rs) borrows a trajectory instead of a reward slice. Both score rewards across time. The [return reference](DEEP_RL_COMPANION.md#33-discounted-return) adds the notation.
 
 </details>
 
-**Explain and change:** why is the first reward undiscounted? Can an expectation differ from every individual outcome? Predict a new reward sequence containing a negative reward and check it by hand.
+**Stop or next:** your restart cue can name `discounted_return`, its unfinished case, and the command above. The next activity is [expectation](#expectation-activity).
 
-**Feedback and next:** use the [return reference](DEEP_RL_COMPANION.md#33-discounted-return) or [expectation reference](DEEP_RL_COMPANION.md#8-expected-value-collapse-uncertainty-into-one-comparison-number) after predicting. Continue to Session 3.
+<a id="expectation-activity"></a>
+### 2B. Score alternative outcomes
+
+**Purpose:** compare uncertain futures using a probability-weighted score. Allow roughly 10 to 20 minutes. Bring Activity 2A's distinction between a reward and a whole-path return.
+
+Suppose one outcome is worth `8` with probability `0.75`, and another is worth `-2` with probability `0.25`. These are alternatives. Expectation weights each value by how likely that outcome is; it does not apply time discounting again.
+
+**1. Predict:** calculate the expected value. Must it equal either possible outcome?
+
+**2. Do:** implement `weighted_expectation` in [`arithmetic/practice.rs`](../src/exercises/arithmetic/practice.rs). Its pairs are `(value, probability)` in that order.
+
+**3. Check:** run just exercise 2.
+
+```bash
+cargo test \
+  exercises::arithmetic::practice::exercise_2_weighted_expectation \
+  -- --exact --ignored
+```
+
+**4. Explain:** split the first outcome into two rows of value `8`, with probabilities `0.25` and `0.50`. Keep the other row. Predict whether the expectation changes, then check this case in the marked exercise-2 test space. Explain why dividing by the number of rows would answer the wrong question.
+
+<details>
+<summary>Optional help, reference, and Rust detail</summary>
+
+Keep time weights inside a path and probability weights across alternatives. For an empty input, the exercise's weighted sum is zero; this does not make an empty list a valid probability distribution.
+
+Use the [exercise-2 card](EXERCISES.md#2-weighted-expectation) for help, then compare the matching [separate solution](../src/exercises/arithmetic/solutions.rs) after an attempt. [`expected_value`](../src/probability.rs) generalizes the same idea with `Fn(&T) -> f64`: the scoring function borrows each outcome. The [expectation reference](DEEP_RL_COMPANION.md#8-expected-value-collapse-uncertainty-into-one-comparison-number) connects this to policy evaluation.
+
+</details>
+
+**Stop or next:** leave a [quick restart note](LEARNING_RECORD.md#quick-restart), or continue to [task endings](#session-3-find-the-end-of-the-episode-20-minutes).
 
 ## Session 3: Find the end of the episode (20 minutes)
 
-**Objective and prerequisite:** distinguish a terminal state from a horizon cutoff. You need Session 2's definition of return.
+**Purpose:** distinguish the world ending from a calculation stopping. Bring the return idea from Activity 2A.
 
-**Predict:** what should zero remaining steps score? Does reaching the horizon mean the world reached `Goodbye`?
+Here `Goodbye` is terminal. `MutualInterest` still has a final transition to `Goodbye`. The horizon is the number of transitions left in the objective; it can reach zero while the world state is nonterminal.
+
+**1. Predict:** what should an evaluation with zero remaining transitions score?
+
+**2. Do:** evaluate that boundary.
 
 ```bash
 cargo run -- evaluate --horizon 0
-cargo run -- evaluate --horizon 1
-cargo run -- evaluate --horizon 5
 ```
 
-**Read:** [`State::is_terminal`](../src/model.rs), then [`extend_one_step` and `enumerate_trajectories`](../src/planning.rs). Locate borrowed inputs, the consumed trajectory, and cloned branch histories.
+**3. Check:** the output reports one represented trajectory and an expected return of zero. That trajectory contains no transitions yet. This differs from erasing a reward already received on entering a terminal state.
+
+**4. Explain:** a robot task ends at its deadline. A different robot keeps working, but its log file stops. Explain why only the first event necessarily ends the task's future reward.
 
 <details>
-<summary>Conceptual hint</summary>
+<summary>Optional comparison and Rust detail</summary>
 
-Ask separately whether the world can continue and whether this objective assigns value beyond the remaining horizon. `MutualInterest` and `Goodbye` have different roles here.
+Predict one-step behavior, then run:
+
+```bash
+cargo run -- evaluate --horizon 1
+```
+
+A longer horizon can include penalties as well as rewards. It need not improve the score. [`State::is_terminal`](../src/model.rs) defines the task ending; [`extend_one_step`](../src/planning.rs) preserves terminal histories. For Rust practice, identify the consumed path, borrowed model, and cloned histories needed for separate branches. The [terminal-state reference](DEEP_RL_COMPANION.md#23-terminal-and-absorbing-states) expands the distinction.
 
 </details>
 
-**Explain and change:** why must terminal paths stop collecting rewards? Explain a robot task that ends at a deadline and a continuing task whose observation file merely stops. Would a longer horizon always improve a return containing penalties?
-
-**Feedback and next:** consult [terminal and absorbing states](DEEP_RL_COMPANION.md#23-terminal-and-absorbing-states). Continue to Session 4.
+**Stop or next:** record which boundary you can explain. Continue to [Bellman values](#session-4-replace-repeated-futures-with-values-25-minutes).
 
 ## Session 4: Replace repeated futures with values (25 minutes)
 
-**Objective and prerequisite:** interpret Bellman evaluation as reusing a smaller remaining problem. Bring returns and boundary behavior from Sessions 2 and 3.
+**Purpose:** reuse the answer to a smaller remaining problem. Bring return, expectation, and the two stopping rules.
 
-**Predict:** should two exact evaluators agree when their policy, model, discount, and remaining horizon match?
+If two histories reach the same state with the same number of steps left, this model gives them the same future value. A Bellman evaluator calculates that continuation once and reuses it. The immediate reward still counts separately.
+
+**1. Predict:** should it agree with enumerating every path when policy, model, discount, and horizon match?
+
+**2. Do:** compare both exact methods through two remaining steps.
 
 ```bash
-cargo run -- compare --horizon 5
-cargo run -- compare --horizon 5 --discount 0
+cargo run -- compare --horizon 2
 ```
 
-**Read:** [`values::evaluate_value`](../src/values.rs) beside [`expected_return_of`](../src/planning.rs). Start at zero remaining steps, then inspect the next row.
+**3. Check:** read the two value columns. The absolute difference measures numerical disagreement; `cached subproblems` is a count, not a return. Small rounding differences are expected.
+
+**4. Explain:** why would a cache keyed only by state confuse a one-step question with a two-step question? Agreement between algorithms still does not show that this invented world is realistic.
+
+<a id="bellman-practice"></a>
+**5. Do one backup:** attempt `bellman_backup` in [`arithmetic/practice.rs`](../src/exercises/arithmetic/practice.rs). Each tuple is `(probability, immediate_reward, next_value)`. Probability already includes the policy and world. Predict the result for `[(0.5, 2.0, 10.0), (0.5, -2.0, 0.0)]` at discount `0.9` before coding.
+
+**6. Check:** run only exercise 10.
+
+```bash
+cargo test \
+  exercises::arithmetic::practice::exercise_10_bellman_backup \
+  -- --exact --ignored
+```
+
+Then change both continuation values to zero. Explain which information still determines the answer. The [exercise-10 card](EXERCISES.md#10-one-bellman-backup) has local help and the separate solution link.
 
 <details>
-<summary>Conceptual hint</summary>
+<summary>Optional exact evaluator and Rust detail</summary>
 
-Two histories can have the same remaining problem. Identify all the information needed to describe that problem, including the steps left.
+Read [`values::evaluate_value`](../src/values.rs) beside [`expected_return_of`](../src/planning.rs). Both average actions under the supplied policy; taking a maximum would answer a different question. The cached key includes state and remaining horizon, while policy and discount stay fixed for this evaluation. The [dynamic-programming reference](DEEP_RL_COMPANION.md#40-dynamic-programming) gives the recurrence.
 
 </details>
 
-**Explain and change:** why does a value depend on both state and horizon? Distinguish averaging actions under a policy from choosing a maximizing action. Change the discount and explain why evaluator agreement does not establish that the invented model is realistic.
-
-**Feedback and next:** use the [dynamic programming reference](DEEP_RL_COMPANION.md#40-dynamic-programming). Continue to Session 5.
+**Stop or next:** stopping after step 4 is fine; leave exercise 10 as your exact restart action. After the backup, continue to [policy comparison](#session-5-compare-policies-without-overclaiming-20-minutes).
 
 ## Session 5: Compare policies without overclaiming (20 minutes)
 
-**Objective and prerequisite:** distinguish evaluating a policy from searching among policies. You need Session 4's fixed-policy value.
+**Purpose:** distinguish evaluating one behavior rule from searching among rules. This command checks eleven boldness values from `0` to `1` in steps of `0.1`, under identical world and horizon settings.
 
-**Predict:** must the most aggressive boldness value have the highest expected return?
+**1. Predict:** must the largest boldness have the highest expected return?
+
+**2. Do:** run the grid comparison.
 
 ```bash
 cargo run -- sweep
-cargo run -- evaluate --boldness 0.3 --horizon 5 --discount 0.95
-cargo run -- evaluate --boldness 1 --horizon 5 --discount 0.95
 ```
 
-**Read:** [`evaluate_policy_grid` and `best_policy`](../src/planning.rs), then [`Policy::possible_actions`](../src/model.rs). Find the `Option` representing an empty candidate set.
+**3. Check:** locate the winning candidate and its return. This establishes the best on this grid for these settings, not a global optimum.
+
+**4. Explain:** what evidence would distinguish trying known policies in a model from changing behavior through experience? A stochastic policy alone does not establish a learning exploration strategy, and a good mean does not guarantee a good individual outcome.
+
+**5. Change one setting:** predict whether the winner must stay the same with horizon `1`, then check:
+
+```bash
+cargo run -- sweep --horizon 1
+```
 
 <details>
-<summary>Conceptual hint</summary>
+<summary>Optional source and Rust detail</summary>
 
-A search can establish a winner only among the candidates it evaluates. Separately ask whether the policy changes in response to observations.
+[`evaluate_policy_grid` and `best_policy`](../src/planning.rs) evaluate candidates and select the best available one. Find the `Option` for an empty candidate set. [`Policy::possible_actions`](../src/model.rs) defines what boldness changes. Use the [grid reference](DEEP_RL_COMPANION.md#38-grid-search) and [exploration distinction](DEEP_RL_COMPANION.md#important-nuance-stochasticity-is-not-automatically-exploration) when needed.
 
 </details>
 
-**Explain and change:** what does the eleven-candidate result establish? Why is policy randomness alone insufficient to describe a learning exploration strategy? Try another horizon and justify comparing candidates under identical settings.
+**Stop or next:** note the settings behind your result. Continue to the [recall checkpoint](#session-6-write-the-small-pieces-yourself-25-minutes).
 
-**Feedback and next:** after predicting, consult [grid search](DEEP_RL_COMPANION.md#38-grid-search) and [stochasticity versus exploration](DEEP_RL_COMPANION.md#important-nuance-stochasticity-is-not-automatically-exploration). Continue to Session 6.
+<a id="session-6-write-the-small-pieces-yourself-25-minutes"></a>
+## Session 6: Recall one small piece (up to 25 minutes)
 
-## Session 6: Write the small pieces yourself (25 minutes)
+**Purpose:** find out what you can reconstruct after working through the examples. This is not a requirement to finish all ten exercises.
 
-**Objective and prerequisite:** retrieve return, expectation, and terminal-aware targets without copying. Bring the first five sessions and basic slices, loops, and conditionals.
+**1. Predict:** with notes and solutions closed, score `[3, -2, 1]` at discount `0.5` and explain each weight.
 
-**Predict and edit:** open [`arithmetic/practice.rs`](../src/exercises/arithmetic/practice.rs), read `discounted_return`'s contract, and predict a boundary case. Attempt just that function:
+**2. Do:** add this case in the marked exercise-1 test space in [`arithmetic/practice.rs`](../src/exercises/arithmetic/practice.rs), using your predicted result.
+
+**3. Check:** run the same exact exercise test.
 
 ```bash
-cargo test exercises::arithmetic::practice::exercise_1_discounted_return -- --exact --ignored
+cargo test \
+  exercises::arithmetic::practice::exercise_1_discounted_return \
+  -- --exact --ignored
 ```
 
-**Support:** the [arithmetic catalog](EXERCISES.md) supplies exact selectors, contracts, conceptual hints, and changed-case prompts. Begin with tasks 1 to 3. Continue with the remaining tasks across later sessions; ten tasks are not a 25-minute requirement.
+A passing assertion checks agreement with the expected result you entered. Independently check the arithmetic too; matching your own incorrect expected value is not sufficient evidence.
 
-**Explain and change:** justify your result and one boundary case, then solve a new case without notes. For a terminal-aware target, distinguish actual task termination from an external observation cutoff.
+**4. Explain:** close the source and distinguish that return from an expectation over two possible paths. If either part is unclear, revisit only Activity 2A or 2B and try a new case.
 
-**Separate solution and next:** after an attempt, compare the matching function in [`arithmetic/solutions.rs`](../src/exercises/arithmetic/solutions.rs), then close it and reconstruct your reasoning. Untouched starter tests intentionally fail when selected. Passing reference tests does not complete your attempt. Continue to composition or schedule a retrieval check.
+**Stop or next:** record correctness, explanation, and help separately in the optional [assessment](LEARNING_RECORD.md#record-an-attempt). Continue to [composition](#composition-lesson-combine-the-pieces-20-to-40-minutes), or stop with a quick restart note. Tasks 3, 7, and 8 appear in the experience lesson. Tasks 5, 6, and 9 are an [optional control extension](EXERCISES.md#5-greedy-action), beyond this fixed-policy learner.
 
 ## Composition lesson: combine the pieces (20 to 40 minutes)
 
-**Objective and prerequisite:** compose owned values and conditional outcomes, then explain concrete map and bind laws. Bring Session 1's probability reasoning; use the separate Rust and probability probes to choose support.
+**Purpose:** connect Rust ownership with the probability calculations you have already used.
 
-**Predict, run, and edit:** follow the [composition lesson](COMPOSITION_LESSON.md). It contains the exact diagnostic and task commands, a type legend, targeted worked examples, and seven separate tasks in [`composition/practice.rs`](../src/exercises/composition/practice.rs).
+**Predict and do:** start with the independent task in the [composition lesson](COMPOSITION_LESSON.md). A tiny concrete transformation introduces the idea first. If you get stuck, its optional ownership and probability probes help you choose support. Continue to a navigation case and then law checks when the pipeline is clear.
 
-**Explain and change:** explain one move and one complete-path probability, then attempt the navigation transfer case. Compare regrouped computations by event probabilities, rather than vector order.
+**Check and explain:** compare observable event probabilities, not vector order. Explain one move and one complete-path weight. Names such as identity and associativity describe the behavior you have just compared; selected floating-point cases are not a general proof for arbitrary Rust closures.
 
-**Separate solution and next:** use [`composition/solutions.rs`](../src/exercises/composition/solutions.rs) after an attempt. When return and terminal behavior are clear, continue to the experience capstone. Numerical law checks are examples, not proofs for arbitrary Rust closures.
+**Stop or next:** answers remain in the [separate composition solutions](../src/exercises/composition/solutions.rs). When return and terminal behavior are clear, continue to [experience](#experience-capstone-learn-values-from-observations-25-minutes).
 
 ## Experience capstone: learn values from observations (25 minutes)
 
-**Objective and prerequisite:** connect a TD target to repeated value updates. Bring Sessions 2 to 4; arithmetic tasks 3, 7, and 8 offer optional preparation.
+**Purpose:** move from evaluating known possibilities to correcting an estimate using observed transitions.
 
-**Predict and run:** follow the [experience lesson](EXPERIENCE_LESSON.md), first predicting one supplied update:
+**Predict and do:** open [the experience lesson](EXPERIENCE_LESSON.md). It puts the supplied update's data before your prediction, then gives one command at a time. Tasks 3 and 8 support the TD rule; task 7 distinguishes a mean of observed returns from an estimate using changing targets.
 
-```bash
-cargo run -- td-trace
-cargo run -- learn-value --episodes 10000 --seed 7
-```
+**Check and explain:** the sampler uses the model, but the learner receives observations. Its values use both state and remaining horizon. Compare several seeds and budgets without expecting error to decrease in every run. The policy stays fixed throughout training.
 
-**Read and explain:** [`experience.rs`](../src/experience.rs) separates the model-driven sampler from the observation-driven learner. Explain why the value table uses both state and steps remaining and why terminal or zero-horizon continuations do not bootstrap.
-
-**Changed case and next:** compare several seeds and episode budgets using the lesson. Explain why the error can rise in a particular run even when the budget grows. This learner evaluates a fixed policy; it does not optimize boldness or implement Q-learning control. Record your attempt, then revisit a changed-context prompt later.
+**Stop or next:** at your next available session, try one [delayed prompt](LEARNING_RECORD.md#next-available-session). Its feedback lives separately. Learner results remain pending until actual attempts are assessed.
 
 ## Keep the vocabulary attached to code
 
-| RL idea | Symbol | Rust location |
+| Idea | Symbol | Rust location |
 | --- | --- | --- |
 | State / action | `s`, `a` | [`State`, `Action`](../src/model.rs) |
 | Policy / world response | `π(a ∣ s)`, `P(s' ∣ s,a)` | [`Policy::possible_actions`, `DatingWorld::possible_next_states`](../src/model.rs) |
@@ -187,7 +294,6 @@ cargo run -- learn-value --episodes 10000 --seed 7
 An `f64` is not automatically a valid probability. Finite nonnegative weights must sum to approximately one; numerical comparisons need a tolerance.
 
 ## Connect this lab to Hugging Face
-
 
 Official unit introductions checked on **2026-10-08**:
 
@@ -201,4 +307,4 @@ This lab is a Rust companion to the concepts, not a port of those course noteboo
 
 ## Save a restart cue
 
-Use the [learning record](LEARNING_RECORD.md), the single assessment template for this project. Record your prediction, correctness, explanation, assistance, confidence, and exact next action. At the next available session, attempt a changed-context prompt without notes; repeat after a longer delay and record the actual interval. All learner outcomes remain pending until you attempt and assess them.
+Use the [three-line quick restart](LEARNING_RECORD.md#quick-restart) whenever you stop. Keep the [full assessment](LEARNING_RECORD.md#record-an-attempt) for a deliberate explanation or delayed check. A note helps you resume; it does not by itself establish learning. The [companion](DEEP_RL_COMPANION.md) and [extension labs](INTERACTIVE_LABS.md) remain optional depth, not prerequisites for finishing a small activity.

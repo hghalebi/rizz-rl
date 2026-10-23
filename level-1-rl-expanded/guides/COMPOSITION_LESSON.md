@@ -1,256 +1,369 @@
 # Compose probabilities while learning Rust ownership
 
-The goal is to explain and implement one small computation: transform an owned
-value, continue it into possible outcomes, and preserve the weights of complete
-paths. Use the actual [`Distribution`](../src/probability.rs) from the planner.
+**Purpose:** carry an uncertain choice through a response model without losing
+which values you own or how likely each complete path is.
 
-Allow about five minutes for the optional diagnostic and fifteen minutes for
-the route it suggests. These are timeboxes, not speed requirements. Passing
-the material's reference tests does not establish that you have learned it.
-Record your own prediction and explanation before looking at results.
+Start with something small. Turning `"tea"` into its byte length gives `3`.
+Doing this to a distribution changes each value and keeps its branch weight:
 
-All commands below run **from the repository root**. Learner code is in
-[`src/exercises/composition/practice.rs`](../src/exercises/composition/practice.rs). It contains
-seven isolated TODO tasks. The separate
-[`solutions.rs`](../src/exercises/composition/solutions.rs) is explicitly a spoiler file.
-[`worked.rs`](../src/exercises/composition/worked.rs) contains the optional guided examples.
+```text
+("tea", 0.4)    -> (3, 0.4)
+("coffee", 0.6) -> (6, 0.6)
+```
 
-The [learning path](LEARNING_PATH.md#composition-lesson-combine-the-pieces-20-to-40-minutes) places this lesson in the overall route. This guide owns its diagnostic, targeted support, and exact task commands.
+This operation is `map`. Continuing one value into several possible outcomes
+uses `and_then`: each complete path gets its starting weight multiplied by its
+conditional weight. Paths that end at the same event contribute to the same
+event probability. We will connect these concrete operations to the law names
+later.
 
-## Read the types before composing them
+**Do now:** attempt [one response pipeline](#independent-pipeline). If a Rust
+move or a probability step gets in the way, use the matching support below.
+A short attempt is enough to find the next useful step. Stopping is allowed.
 
-The aliases and result types live in [`composition/mod.rs`](../src/exercises/composition/mod.rs). They name ordinary Rust function pointers and records; they are not new category-theory machinery.
+All commands run **from the repository root**. Edit
+[`practice.rs`](../src/exercises/composition/practice.rs); its seven TODO tasks
+are independent. Keep [solutions.rs](../src/exercises/composition/solutions.rs)
+closed during an unaided attempt. The [learning path](LEARNING_PATH.md#composition-lesson-combine-the-pieces-20-to-40-minutes)
+owns progression through the wider course.
 
-| Type | Read it as |
-| --- | --- |
-| `StringBranch = fn(String) -> Distribution<String>` | Consume one owned label and return its weighted possible successors. |
-| `IntegerBranch = fn(i32) -> Distribution<i32>` | Take one integer and return weighted successor integers. |
-| `IntegerMap = fn(i32) -> i32` | Transform one integer into one integer. |
-| `MapResults` | Keep identity, sequential, and composed experiments in separate fields. |
-| `BindIdentityResults` | Keep the left-identity and right-identity experiments separately. |
-| `AssociationResults` | Keep sequential and regrouped experiments separately. |
+<a id="4-independent-task-construct-the-pipeline"></a>
+<a id="independent-pipeline"></a>
+## Do now: construct one response pipeline
 
-A `fn(...) -> ...` value is a function pointer; these fixtures pass named functions without captured local state. A `Distribution<T>` stores possible values of `T` with weights. Inspect each task's input and output types before choosing an operation. Consuming a distribution means that a separate experiment needs its own input value.
+**Question:** if choices produce uncertain responses, how likely is each
+response byte length? This is a transformation of outcomes, not an RL reward.
 
-## 1. Optional diagnostic: assess two skills separately
+The case uses `P(ask) = 0.7`, `P(story) = 0.3`,
+`P(engaged | ask) = 0.8`, and `P(engaged | story) = 0.6`.
+The other response is `"quiet"`. Both labels are ASCII.
 
-**Ownership probe:** inspect
-[`ownership_move.rs`](../tests/fixtures/ownership_move.rs). It deliberately
-does not compile. Before running, identify the expression that transfers
-ownership, explain who owns the `String` afterward, and explain how a borrowed
-parameter would differ. Distinguish a syntax slip from an ownership mistake.
+<a id="read-the-types-before-composing-them"></a>
+The supplied `respond` function has type
+`StringBranch = fn(String) -> Distribution<String>`: it consumes one owned
+choice label and returns its weighted responses. The alias lives in
+[`composition/mod.rs`](../src/exercises/composition/mod.rs). These fixtures use
+named function pointers without captured local state.
+
+1. **Predict:** sketch the types between choices, responses, and byte lengths.
+   Write the probability of one complete path, then predict one final event.
+2. **Attempt:** implement only `independent_pipeline` in
+   [`practice.rs`](../src/exercises/composition/practice.rs), using the planner's
+   `map` and `and_then`. Use the supplied response model; do not hard-code the
+   fixture's final probabilities.
+3. **Check:** run this one task.
+
+   ```bash
+   cargo test exercises::composition::practice::independent -- --exact --ignored
+   ```
+
+4. **Explain:** with references closed, identify one ownership transfer and one
+   probability multiplication in your implementation.
+5. **Change the case:** add a new prediction and assertion under `YOUR CASE` in
+   the existing `independent` test wrapper in the same file. Keep its shared-case
+   call. Run the same command again.
+
+For your case, define a small choice distribution and a named response function
+inside the wrapper. Use finite weights in `[0, 1]` that sum to one, for both the
+choice distribution and each conditional response. Use
+`cases::assert_same_events(&actual, &expected)` to
+compare your predicted event probabilities. Shared
+[`cases.rs`](../src/exercises/composition/cases.rs) contains acceptance checks
+and expected outputs; leave it unchanged. Reading it counts as assistance for
+an otherwise unaided attempt.
+
+<details>
+<summary>Hint: decide which step changes the number of branches</summary>
+
+One choice can lead to several responses. One response label has one byte
+length. Match each of those descriptions to an operation before writing the
+pipeline. If the difficult part is owning the labels, use the
+[ownership support](#ownership-support); if it is weighting paths, use the
+[probability support](#probability-support).
+
+</details>
+
+**Stop here:** save a [restart note](LEARNING_RECORD.md). For example:
+`Next: practice.rs, independent_pipeline; rerun the independent command above.`
+After an explanation and a correct changed case, the default next activity is
+[the navigation check](#navigation-check). No other TODO must be finished first.
+
+<a id="5-changed-context-a-navigation-transfer-check"></a>
+<a id="navigation-check"></a>
+## Next: change the context to navigation
+
+**Question:** how likely is arrival at `"goal"` when routes have uncertain
+outcomes? North has probability `0.6` and south `0.4`. North reaches goal with
+conditional probability `0.75`; south reaches it with probability `0.25`.
+Their other destination is `"delay"`.
+
+1. **Predict:** close the earlier implementation and calculate the total chance
+   of goal before coding.
+2. **Attempt:** implement `navigation_pipeline` in
+   [`practice.rs`](../src/exercises/composition/practice.rs). The supplied travel
+   function consumes a route and returns weighted destination labels. Return a
+   distribution of whether each destination is exactly `"goal"`.
+3. **Check:** run the navigation task.
+
+   ```bash
+   cargo test \
+     exercises::composition::practice::transfer_navigation \
+     -- --exact --ignored
+   ```
+
+4. **Explain:** describe what changed in the context and what stayed the same
+   in the type flow and probability calculation.
+
+**Stop here:** record any help used. Copying the earlier pipeline is useful
+practice, but does not establish unaided transfer. On a later visit, try a new
+case in the `transfer_navigation` wrapper and record the actual delay. When
+ready to continue, try [the first law experiment](#law-experiments).
+
+<a id="1-optional-diagnostic-assess-two-skills-separately"></a>
+## Optional diagnostic: find the support you need
+
+Use one probe if you cannot yet identify what is difficult. About five minutes
+is a planning aid, not a speed requirement. These checks concern this lesson,
+not readiness for the whole RL capstone.
+
+**Rust probe:** inspect
+[`ownership_move.rs`](../tests/fixtures/ownership_move.rs). Identify the
+expression that transfers ownership and explain who owns the `String`
+afterward. Predict how a borrowed parameter would differ. Then check:
 
 ```bash
 cargo test --test ownership_compile_fail rejects_reuse_after_move -- --exact --nocapture
 ```
 
-The test succeeds only when `rustc` rejects the fixture with `E0382`. The broken
-snippet is outside normal Cargo targets; the reference project remains buildable.
-This verifies the demonstration, not your explanation.
+The test passes only when `rustc` rejects the deliberate mistake with `E0382`.
+The fixture is outside normal Cargo targets. This validates the demonstration;
+your explanation is a separate check. If needed, continue to
+[ownership support](#ownership-support).
 
-**Probability probe:** `P(ask) = 0.7`, `P(story) = 0.3`,
-`P(engaged | ask) = 0.8`, and `P(engaged | story) = 0.6`.
-Predict the probability of **ask and engaged**, then the probability of
-**engaged through either choice**. Explain why the two questions differ.
+**Probability probe:** use the ask/story weights in the independent task.
+Predict **ask and engaged**, then **engaged through either choice**. Explain
+why those questions differ before checking:
 
 ```bash
 cargo test exercises::composition::worked::probability_probe -- --exact --nocapture
 ```
 
-Record correctness and unaided explanation separately for each probe.
+If needed, continue to [probability support](#probability-support). If both
+skills need support, take ownership first and probability afterward. If both
+explanations are sound, return to [the independent task](#independent-pipeline).
 
-| Evidence from your attempt | Smallest useful route |
-| --- | --- |
-| Both predictions and explanations are sound | Start at the independent task in section 4. |
-| Ownership needs support | Ownership example and completion A, then section 4. |
-| Probability composition needs support | Branching example and completion B, then section 4. |
-| Both need support | Both examples and completions, then section 4. |
-| Diagnostic skipped | Choose a challenge or a worked example, then adjust from the attempt. |
+<a id="2-worked-examples-inspect-only-the-support-you-need"></a>
+<a id="3-completion-tasks-fill-one-meaningful-gap"></a>
+<a id="ownership-support"></a>
+## Optional Rust support: inspect, then consume
 
-This tentative route concerns this composition lesson, not readiness for the
-whole RL capstone. If the combined task still obscures the difficulty, briefly
-practice the weak skill separately before recombining it.
+**Question:** can you inspect a distribution before consuming it with `map`?
+The analogous worked example uses `"tea"` and `"coffee"`.
 
-## 2. Worked examples: inspect only the support you need
+1. **Predict:** write their byte lengths and the number of stored branches.
+2. **Observe:** run the ownership example, then inspect `ownership_demo` in
+   [`worked.rs`](../src/exercises/composition/worked.rs).
 
-**Ownership objective:** distinguish borrowing a distribution to inspect it
-from consuming it with `map`. Run after predicting the output lengths:
+   ```bash
+   cargo test exercises::composition::worked::ownership_demo -- --exact --nocapture
+   ```
 
-```bash
-cargo test exercises::composition::worked::ownership_demo -- --exact --nocapture
-```
+   Find the borrow, the move, and the new owned result. Explain why inspecting
+   the original distribution after `map` would fail. `String::len` measures
+   bytes, not displayed characters.
+3. **Complete:** close the example and fill the closure in `complete_ownership`
+   in [`practice.rs`](../src/exercises/composition/practice.rs). Preserve the
+   branch count and probabilities while returning each label's byte length.
+4. **Check:** run completion A.
 
-In `ownership_demo`, point to the borrow, the move, and the new owned result.
-Explain why computing the original branch count after `map` would be a problem.
-The strings here are ASCII; `String::len` measures bytes, not displayed characters.
+   ```bash
+   cargo test \
+     exercises::composition::practice::ownership_completion \
+     -- --exact --ignored
+   ```
 
-**Probability objective:** distinguish a conditional response distribution
-from the weights of complete paths. Predict before running:
+<details>
+<summary>Hint: inspect an owned label without duplicating its text</summary>
 
-```bash
-cargo test exercises::composition::worked::branching_demo -- --exact --nocapture
-```
+The closure receives one owned `String`. Consider which of its methods can
+inspect the information requested by the output type.
 
-Explain why four stored branches can represent only two distinct response
-events. The count of stored branches is not the count of unique outcomes.
+</details>
 
-**Optional combined example:** inspect the purpose labels in `combined_demo`:
-transform a choice, branch through a response model, transform its result.
+**Stop here:** save a restart note, or return to
+[the independent task](#independent-pipeline). If probability is also unclear,
+the next useful step is [probability support](#probability-support).
+
+<a id="probability-support"></a>
+## Optional probability support: weight a complete path
+
+**Question:** why is a response's conditional probability not yet the weight
+of the whole path that reaches it?
+
+1. **Predict:** using the ask/story inputs, draw the four complete branches.
+   Keep one weight beside each path and distinguish paths from response events.
+2. **Observe:** run the branching example, then inspect `branching_demo` in
+   [`worked.rs`](../src/exercises/composition/worked.rs).
+
+   ```bash
+   cargo test exercises::composition::worked::branching_demo -- --exact --nocapture
+   ```
+
+   Explain why four stored branches can describe two distinct response events.
+3. **Complete:** close the example and fill only the continuation in
+   `complete_branching` in [`practice.rs`](../src/exercises/composition/practice.rs).
+   Its `StringBranch` parameter already maps one owned choice to its conditional
+   response distribution.
+4. **Check:** run completion B.
+
+   ```bash
+   cargo test \
+     exercises::composition::practice::branching_completion \
+     -- --exact --ignored
+   ```
+
+<details>
+<summary>Hint: compose uncertainty instead of nesting it</summary>
+
+Which operation weights complete paths through a second distribution? A plain
+value transformation can instead leave a distribution inside each outcome.
+
+</details>
+
+**Stop here:** return to [the independent task](#independent-pipeline), or save
+that task and its command as your next action.
+
+<details>
+<summary>Optional combined worked example, after an attempt</summary>
+
+Inspect the purpose labels in `combined_demo`: transform a choice, branch
+through a response model, transform its result.
 
 ```bash
 cargo test exercises::composition::worked::combined_demo -- --exact --nocapture
 ```
 
-Response byte lengths illustrate a Rust transformation. They are not rewards
-and do not turn this example into a learning algorithm.
-
-## 3. Completion tasks: fill one meaningful gap
-
-**A: ownership.** In `complete_ownership`, complete the closure that returns
-each label's byte length. Preserve the initial branch count and probabilities.
-
-```bash
-cargo test exercises::composition::practice::ownership_completion -- --exact --ignored
-```
-
-**B: branching.** In `complete_branching`, complete the continuation using the
-supplied branch function. It receives one choice and returns its possible responses.
-
-```bash
-cargo test exercises::composition::practice::branching_completion -- --exact --ignored
-```
-
-Run only the task you are attempting. Untouched TODOs remain compilable and
-fail only when selected. Filtering isolates test execution, not compilation:
-a syntax or type error anywhere in the same target can block the selected task.
-
-<details>
-<summary>Optional conceptual hints for the completion tasks</summary>
-
-- Ownership: the closure receives one owned `String`; ask what information its
-  methods can inspect without duplicating the text.
-- Branching: the supplied function already describes uncertainty conditional
-  on one choice. Identify which operation composes distributions rather than
-  merely putting a distribution inside each outcome.
+Byte lengths demonstrate a Rust transformation; they are not rewards and this
+example does not learn a policy. Close the example before a new unaided attempt.
 
 </details>
 
-## 4. Independent task: construct the pipeline
+<a id="6-laws-predict-an-equivalence-then-construct-both-sides"></a>
+<a id="law-experiments"></a>
+## Laws: predict an equivalence, then construct both sides
 
-Without the worked code or solutions, implement `independent_pipeline`.
-It receives weighted choices and a response function. Return the distribution
-of response label byte lengths. Reuse the planner's `map` and `and_then`;
-do not hard-code the supplied fixture's final probabilities.
+Take one experiment per sitting if that helps. These tasks use the same finite
+distributions as the planner, with small integers, duplicate outcomes, and a
+zero-probability branch. Each result field is a separate experiment, so a
+consuming operation needs its own input value.
 
-Before coding, sketch the input and output type of each step. Then run:
+### First experiment: transform values in one step or two
 
-```bash
-cargo test exercises::composition::practice::independent -- --exact --ignored
-```
+For a concrete starting value `2`, compare adding one and then doubling with
+one transformation that adds one and doubles. Predict whether they agree.
+Then ask whether doing nothing preserves the starting distribution.
 
-Explain both a move and a probability multiplication without opening the
-reference. Add a new choice distribution to the shared
-[`cases.rs`](../src/exercises/composition/cases.rs) and predict its result. Those cases
-contain expected numbers, so opening them counts as assistance when checking
-an otherwise unaided attempt.
+`IntegerMap = fn(i32) -> i32` names one such transformation. `MapResults`
+holds the fields `identity`, `sequential`, and `composed`.
 
-## 5. Changed context: a navigation transfer check
+1. Implement `construct_map_laws` in [`practice.rs`](../src/exercises/composition/practice.rs).
+2. Run the map experiment.
 
-Close earlier implementations. In `navigation_pipeline`, weighted routes lead
-through the supplied travel function to destination labels. Return the
-distribution of whether the destination is exactly `"goal"`.
+   ```bash
+   cargo test exercises::composition::practice::map_laws -- --exact --ignored
+   ```
 
-For the initial case, north has probability `0.6` and south `0.4`. North reaches
-goal with conditional probability `0.75`; south reaches it with probability
-`0.25`. Their other outcome is `"delay"`. Predict the total chance of goal.
+3. Add one predicted input under `YOUR CASE` in the `map_laws` wrapper and
+   explain why the event probabilities agree.
 
-```bash
-cargo test exercises::composition::practice::transfer_navigation -- --exact --ignored
-```
+After observing them, name these **functor identity and composition**. A map
+changes values while preserving each stored branch's weight. Different
+branches can end at the same event; their stored rows remain separate.
 
-Explain what changed in the context and what stayed the same in the types and
-probability structure. Passing by copying the earlier pipeline is not evidence
-of unaided transfer. At the next available session, try another comparable
-case without notes and record the actual delay and any help used. Use the
-project's [learning record](LEARNING_RECORD.md) to distinguish correctness from explanation.
+**Stop here.** Next, try the certainty experiment when you are ready.
 
-## 6. Laws: predict an equivalence, then construct both sides
+### Second experiment: insert a certain step
 
-These three tasks use small integers to keep arithmetic secondary. The
-fixtures include normalized finite weights, duplicate outcomes, and a
-zero-probability branch. Read the `MapResults`, `BindIdentityResults`, and
-`AssociationResults` field names in [`composition/mod.rs`](../src/exercises/composition/mod.rs).
-Each field holds a separate experiment using the existing distribution type.
+Imagine starting certainly at `2` and then branching, or taking an existing
+uncertain outcome and continuing certainly with that same value. Predict
+what either inserted certainty changes.
 
-**Map task:** `construct_map_laws` returns an identity transformation, two
-successive transformations, and the same transformations composed in one step.
-Predict which results agree before running:
+`IntegerBranch = fn(i32) -> Distribution<i32>` names a weighted continuation.
+`BindIdentityResults` has `left_identity` and `right_identity` fields.
 
-```bash
-cargo test exercises::composition::practice::map_laws -- --exact --ignored
-```
+1. Implement `construct_bind_identities` in [`practice.rs`](../src/exercises/composition/practice.rs).
+2. Run the certainty experiment.
 
-After observing the equivalences, name them: **functor identity and composition**.
-A map changes outcomes while preserving how their branches are weighted.
+   ```bash
+   cargo test exercises::composition::practice::bind_identities -- --exact --ignored
+   ```
 
-**Certainty task:** `construct_bind_identities` inserts a certain beginning
-before a branch function, and a certain continuation after an input distribution.
-Predict what should remain unchanged:
+3. Add one predicted input in the `bind_identities` wrapper and explain the
+   probabilities in both results.
 
-```bash
-cargo test exercises::composition::practice::bind_identities -- --exact --ignored
-```
+Name these **left and right identity for bind**. Here `certain` is the unit
+operation and `and_then` is bind.
 
-Afterward, name these **left and right identity for bind**. Here `certain` is
-the unit operation and `and_then` is bind.
+**Stop here.** Next, try regrouping those continuations.
 
-**Regrouping task:** `construct_associativity` returns two successive branching
-steps and a single continuation that groups those same steps internally.
-Keep their order unchanged; only the grouping changes.
+### Third experiment: regroup without reordering
 
-```bash
-cargo test exercises::composition::practice::associativity -- --exact --ignored
-```
+Compare two consecutive branching steps with one continuation that performs
+those same steps internally. The order stays fixed; only the grouping changes.
+`AssociationResults` has `sequential` and `regrouped` fields.
 
-Afterward, name the equivalence **associativity**. Composing functions of the
-shape `A -> Distribution<B>` this way is called **Kleisli composition**. No
-generic category-theory framework is needed to inspect the two computations.
+1. Predict whether regrouping changes any complete path's weight.
+2. Implement `construct_associativity` in [`practice.rs`](../src/exercises/composition/practice.rs).
+3. Run the regrouping experiment.
 
-For each law, add one small new input and explain its outcome probabilities.
-The comparison helper aggregates each event across duplicate branches and
-checks every event occurring on either side with absolute tolerance `1e-9`.
-It also rejects invalid probabilities. Two vectors can differ in ordering,
-duplicates, or zero branches while representing the same distribution.
+   ```bash
+   cargo test exercises::composition::practice::associativity -- --exact --ignored
+   ```
 
-These selected numerical tests illustrate laws; they are not a proof for all
-inputs. The examples use pure, deterministic functions. Rust's `Fn` bound does
-not guarantee purity, and floating-point arithmetic is not exact real arithmetic.
-Do not infer laws for arbitrary closures with side effects from these examples.
+4. Add one predicted input in the `associativity` wrapper and explain the
+   resulting event probabilities.
+
+Name this equivalence **associativity**. Composing functions of the shape
+`A -> Distribution<B>` this way is called **Kleisli composition**.
+
+The comparison helper sums duplicate events and checks every event occurring
+on either side within absolute tolerance `1e-9`. It rejects invalid weights.
+Vectors can differ in order, duplicates, or zero branches while representing
+the same distribution. These selected tests illustrate laws; they do not prove
+them for every input. The examples use pure, deterministic functions. Rust's
+`Fn` bound does not guarantee purity, and floating-point arithmetic is not exact
+real arithmetic. Do not extend this evidence to arbitrary side-effecting closures.
+
+**Stop here:** save a [restart note](LEARNING_RECORD.md). The next course
+activity is [learning values from observations](LEARNING_PATH.md#experience-capstone-learn-values-from-observations-25-minutes).
 
 ## After your attempt: separate solutions and next step
 
-After an attempt, open only the matching function in the [separate solutions](../src/exercises/composition/solutions.rs).
-For example, verify the independent reference with:
+An unfinished selected task stops at its TODO. Implement that function; the
+other TODOs can remain. A compiler error anywhere in the same target can block
+this task, so start with the first diagnostic. An assertion names the failed
+case and event. Zero selected tests means the attempt was not checked: recopy
+the full selector. A pass is a reason to explain a changed case, not proof of
+understanding by itself.
+
+After an attempt or an explicit choice to use help, open only the matching
+function in [the separate solutions](../src/exercises/composition/solutions.rs).
+For example, this checks the independent reference answer:
 
 ```bash
 cargo test exercises::composition::solutions::independent -- --exact
 ```
 
-Replace `independent` with the exact task name when checking another solution.
-Run all reference, worked, and comparison checks with:
+Replace `independent` with the exact task name for another solution. Reference
+tests do not execute your attempt. For maintenance, this wider check runs all
+reference, worked, and comparison tests, skipping the seven learner tasks:
 
 ```bash
 cargo test exercises::composition::
 ```
 
-Normal checks intentionally skip the seven learner tasks. Use the
-[learning record](LEARNING_RECORD.md) for your prediction, observed result,
-correctness, unaided explanation, assistance, and actual delay before revisiting.
-Keep confidence as a signal rather than the progression gate.
-
-Advance after an unaided explanation and a successful changed case. If the
-same critical misconception remains after targeted support and a comparable
-new case, revise that support; do not infer a fixed limitation in the learner.
-Whether this lesson helps you remains unverified until you actually attempt it.
-Return to the [learning path](LEARNING_PATH.md#experience-capstone-learn-values-from-observations-25-minutes)
-for the next lesson, or use the learning record for a delayed changed-context check.
+Use the [learning record](LEARNING_RECORD.md) for a quick restart cue or an
+optional detailed assessment. Keep correctness, explanation, help used, and
+actual delay separate. If the same misconception remains after support, revise
+the support and try a smaller case. Whether this lesson helps you is still
+unverified until you actually attempt it.

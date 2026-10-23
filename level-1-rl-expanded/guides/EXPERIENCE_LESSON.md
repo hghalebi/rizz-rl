@@ -1,72 +1,144 @@
 # Learn a value from observations
 
-This capstone connects the probability model to **tabular TD(0) evaluation of a fixed policy**. The policy's boldness stays fixed while a table of value estimates changes. No improved policy or neural network is learned.
+**Start here:** follow [one supplied update](#2-predict-one-update-before-training-15-minutes). **Returning:** use your [quick restart note](LEARNING_RECORD.md#quick-restart).
 
-Start after you can explain a discounted return, a terminal transition, and one TD target. If one of those is unclear, revisit only the matching task in [the exercise guide](EXERCISES.md). Use [the learning record](LEARNING_RECORD.md) to distinguish an assisted attempt from an independent one.
+This lesson learns **values for a fixed policy**. Its boldness stays fixed while estimates change. It does not learn an improved policy or a neural network. The [learning path](LEARNING_PATH.md#experience-capstone-learn-values-from-observations-25-minutes) supplies the prerequisites: return, expectation, and terminal behavior.
+
+All commands run **from the repository root**. Take one activity at a time; the time estimates are adjustable. A short visit can end after one prediction.
 
 ## 1. Separate the responsibilities
 
-| Part | Receives | Does |
+You have already evaluated all possible futures using the model. Here the learner gets one observed transition at a time and corrects its estimate.
+
+| Part | Information it receives | Its job |
 | --- | --- | --- |
-| Sampler | Policy, world model, seed, and horizon | Samples actions and consequences to produce observed transitions. |
-| Learner | Observations, remaining steps, and discount | Updates a value table and visit counts. It does not inspect transition probabilities or exact values. |
-| Exact evaluator | The same policy, world, initial state, horizon, and discount | Computes a separate reference value for comparison after training. |
+| Sampler | Policy, world model, seed, and horizon | Produce observed actions, rewards, and next states. |
+| Learner | Observations, remaining steps, and discount | Update a value table and its visit counts. |
+| Exact evaluator | The same policy, world, initial state, horizon, and discount | Supply a separate comparison after training. |
 
-The environment simulator uses the known model, while the learner sees observations. This boundary is what makes the experiment learning from experience even though the toy world was written by hand. Inspect [`ValueTable::observe` in experience.rs](../src/experience.rs) beside the separate [exact evaluator](../src/values.rs).
-
-The learned entry is `V(h, state)`, where `h` is the number of transitions remaining. A state with one step remaining and the same state with five remaining can have different values. Treating those as one table entry would change the objective.
+The learner does not inspect model probabilities or exact answers. Its table entry is `V(h, state)`, where `h` means transitions remaining. The same state with one step left and with five steps left asks two different questions.
 
 ## 2. Predict one update before training (15 minutes)
 
-All commands run **from the repository root**. Open the supplied trace in [`experience.rs`](../src/experience.rs), identify one update's inputs, and predict its target and new estimate before running:
+**Purpose:** see how one observation corrects one estimate. A *target* combines the reward just observed with the discounted estimate of what follows. An *update* moves the old estimate toward that target.
+
+The command below contains three supplied records. Focus on the **second** record. An earlier record has already set the one-step estimate of `Engaged` to `4`:
+
+| Input to this update | Value |
+| --- | --- |
+| Entry being updated | `V(2, JustMet)` |
+| Previous estimate | `0` |
+| Observed reward | `1` |
+| Next state | `Engaged`, with one transition remaining |
+| Current estimate of that continuation | `4` |
+| Discount | `0.5` |
+| Visit count for this entry, including this observation | `1` |
+
+The learning rate is `1 / visits` for this entry. The update is `previous + learning_rate * (target - previous)`.
+
+**1. Predict:** calculate the target and the new estimate for this record.
+
+**2. Do:** run the supplied trace.
 
 ```bash
 cargo run -- td-trace
 ```
 
-<details>
-<summary>Conceptual hint before reading the output</summary>
+**3. Check:** find the second record's `target`, `visits`, and `value`. Compare them with your prediction. These are separate deterministic update records, not one world-generated episode; the supplied rewards isolate the arithmetic.
 
-Separate the observed reward from the continuation estimate already stored in the table. Identify which entry owns the visit count before computing a learning rate.
+**4. Explain:** suppose this observation instead ended at `Goodbye`, with the same reward. Which part of the target would disappear, and why would the arriving reward still count?
+
+<details>
+<summary>Optional support: target, update, and Rust details</summary>
+
+If the target is unclear, attempt [exercise 3](EXERCISES.md#3-terminal-aware-td-target), `td_target`. It computes a target without updating stored values. If moving the old estimate is unclear, attempt [exercise 8](EXERCISES.md#8-one-td-update), `td_update`. Each card has its own exact command and separate solution.
+
+[`ValueTable::observe`](../src/experience.rs) borrows the table mutably and only reads the observation. Counts belong to `(h, state)`, not to the whole run. The next-state estimate is looked up at `h - 1`.
+
+A terminal next state or zero remaining horizon gives zero continuation. The last reward still counts. Episodes stop at termination or the selected horizon; this lesson has no separate interruption limit. An external cutoff in a continuing task would require a different interpretation.
 
 </details>
 
-These are separate deterministic update records with supplied rewards, not one world-generated episode. For the row you predicted, explain the current estimate, observed reward, continuation estimate, visit count, and learning rate. Compare your prediction with the printed update.
-
-The update uses a TD target: immediate reward plus discounted continuation value when continuation exists. The learning rate is `1 / visits`, using the count for the particular `(h, state)` entry, including the current visit. The continuation estimate can change during training, so this is not simply averaging complete episode returns.
-
-**Explain aloud:** why must visits to another state or another horizon leave this entry's count unchanged? Which value is supplied by observation and which comes from the learner's current table?
-
-True termination and `h = 0` end continuation for this finite-horizon objective. The last reward still counts. An episode stops at termination or the selected horizon; there is no separate interruption limit in this lesson. This differs from externally truncating an otherwise continuing task.
+**Stop or next:** save the record you were explaining and `cargo run -- td-trace` as your restart action. Next, [run one sampled experiment](#3-run-one-reproducible-experiment-20-minutes).
 
 ## 3. Run one reproducible experiment (20 minutes)
 
-**Predict:** should a finite sample produce exactly the Bellman value, and does an unvisited entry deserve to be described as learned?
+**Purpose:** estimate the value of one fixed policy from sampled episodes, then compare it with the exact answer to the same question.
+
+This experiment fixes boldness `0.3`, horizon `5`, discount `0.95`, and seed `7`. It starts with an empty learned table and collects 10,000 episodes. Use `cargo run -- --help` for command defaults and bounds.
+
+**1. Predict:** must this finite sample reproduce the exact Bellman value?
+
+**2. Do:** run the experiment.
 
 ```bash
 cargo run -- learn-value --boldness 0.3 --horizon 5 --discount 0.95 --episodes 10000 --seed 7
 ```
 
-Read the initial-state estimate, exact reference, their difference, and the visit counts. A zero-initialized entry with no visits has no empirical support. Some displayed entries are unreachable from the chosen initial state and horizon, so complete table coverage is not expected. Terminal and zero-horizon values, in contrast, are fixed by the task's boundary rules.
+**3. Check:** read `Learned V_h(JustMet)`, `Exact V_h(JustMet)`, and `Absolute error`. A difference measures this estimate's error for the declared model and objective, not whether the model describes real people.
 
-Repeat the same command to check reproducibility for the same program and parameters. A seed controls the random sequence; it is not a guarantee that the resulting estimate is accurate. Reproducibility across arbitrary future RNG or program versions is not promised.
+**4. Explain:** choose a table row marked `unvisited`. Why is its zero an initial estimate rather than evidence that its value was learned?
 
-Use `cargo run -- --help` for the authoritative command defaults and bounds. This lesson holds boldness `0.3`, horizon `5`, and discount `0.95` fixed unless a step explicitly changes them.
+**5. Repeat:** rerun the same command. Check whether the result repeats. A seed supports reproducibility under the same program and dependencies; it does not establish accuracy.
+
+<details>
+<summary>Optional depth: coverage, means, and ownership</summary>
+
+Some displayed entries cannot be reached from the chosen initial state and horizon, so complete table coverage is not expected. Terminal and zero-horizon values are different: their zeros are fixed by the task's boundary rules.
+
+With learning rate `1 / visits`, each entry averages the targets it has seen. Those targets use continuation estimates that can change during training. This is not simply a mean of complete observed episode returns. [Exercise 7](EXERCISES.md#7-incremental-mean-return), `update_mean`, isolates the latter arithmetic; explain where its new return would come from before comparing the two uses.
+
+In [`experience.rs`](../src/experience.rs), follow `sample_transition` only if you want the Rust detail: the sampler borrows choices, then clones the selected values into an owned observation. `ValueTable::observe` never calls the world or [exact evaluator](../src/values.rs).
+
+</details>
+
+**Stop or next:** note the command and the row you inspected. Next, [compare two budgets](#4-compare-budgets-and-seeds-20-minutes).
 
 ## 4. Compare budgets and seeds (20 minutes)
 
-**Predict:** which changes affect sampling variability, and which change the value being estimated?
+**Purpose:** distinguish a reproducible estimate from a consistently accurate one. Keep the policy, horizon, and discount fixed while changing only the sampling budget or seed.
+
+**1. Predict:** must increasing an episode budget reduce the error for every seed?
+
+**2. Do:** run 1,000 episodes with seed `2026` and note the absolute error.
 
 ```bash
-cargo run -- learn-value --episodes 100 --seed 7
-cargo run -- learn-value --episodes 10000 --seed 7
-cargo run -- learn-value --episodes 100 --seed 42
+cargo run -- learn-value --episodes 1000 --seed 2026
+```
+
+**3. Change one setting:** increase only the episode budget.
+
+```bash
+cargo run -- learn-value --episodes 10000 --seed 2026
+```
+
+**4. Check:** compare the errors. Keep a worse result in your notes too. This pair illustrates behavior of a particular run, not a statistical guarantee or a convergence proof.
+
+**5. Explain:** why can an online learner's error rise at a particular budget even while it receives more observations? Distinguish a changing estimate from the fixed exact value being estimated.
+
+<details>
+<summary>Optional next comparison: use a different seed</summary>
+
+Predict what should stay fixed, then change only the seed from the 10,000-episode run:
+
+```bash
 cargo run -- learn-value --episodes 10000 --seed 42
 ```
 
-Keep boldness, horizon, and discount fixed while comparing seed and episode budget. Record the actual errors, including any worse result. Error need not decrease at every budget or for every seed; these short runs do not prove convergence. Two seeds are a useful first comparison, not a statistical accuracy guarantee.
+Check that the exact reference remains the same. To change the objective instead, predict the effect of discount zero and run:
 
-Integration runs on **2026-10-08** produced the absolute errors below, rounded to six decimals. Every run used boldness `0.3`, horizon `5`, and discount `0.95`; the exact initial-state value was `3.103947335269`. Each run began with an empty learned table. The seeded sampler uses pinned `rand 0.9.2` and `rand_chacha 0.9.0` dependencies.
+```bash
+cargo run -- learn-value --discount 0 --episodes 10000 --seed 42
+```
+
+Now the exact comparison must use that changed discount too. Before attributing a mismatch to sampling, check policy, discount, remaining horizon, terminal handling, and visit counts. Several seeds and budgets are more informative than one favorable run, but a few examples still provide no statistical accuracy guarantee.
+
+</details>
+
+<details>
+<summary>Optional reference: previously measured seed and budget results</summary>
+
+Integration runs on **2026-10-08** produced these absolute errors, rounded to six decimals. Every run used boldness `0.3`, horizon `5`, and discount `0.95`; the exact initial-state value was `3.103947335269`. Each run began with an empty table. The sampler used pinned `rand 0.9.2` and `rand_chacha 0.9.0` dependencies.
 
 | Episodes | Seed 7 | Seed 42 | Seed 2026 |
 | --- | --- | --- | --- |
@@ -74,27 +146,30 @@ Integration runs on **2026-10-08** produced the absolute errors below, rounded t
 | 1,000 | 0.557351 | 0.119144 | 0.030353 |
 | 10,000 | 0.199918 | 0.070203 | 0.118850 |
 
-Seed 2026 has more error at 10,000 episodes than at 1,000. Reproduce that comparison before explaining why a favorable single run is insufficient:
+These historical measurements describe program behavior. They do not measure learner understanding, and reproducibility across arbitrary future program or RNG versions is not promised.
 
-```bash
-cargo run -- learn-value --episodes 1000 --seed 2026
-cargo run -- learn-value --episodes 10000 --seed 2026
-```
+</details>
 
-These are observations about this program, not measurements of learner understanding or a statistical convergence study.
-
-Now change only the discount and check that the exact reference changes to the same objective:
-
-```bash
-cargo run -- learn-value --discount 0 --episodes 10000 --seed 7
-```
-
-**Explain aloud:** what could cause a mismatch besides sampling variation? Check parameter agreement, remaining horizon, terminal handling, and visit counts before blaming the learning algorithm.
+**Stop or next:** record the two settings and your explanation. Next, [try a new context](#5-apply-the-rule-without-the-trace).
 
 ## 5. Apply the rule without the trace
 
-Close the source and output. In a navigation task, a transition enters a terminal goal and produces a reward. Explain which parts of a TD target still apply, then write one update using your own finite numbers. Change the transition to a continuing state and explain what additional information is needed.
+**Purpose:** check the rule independently of the supplied output. Close the source and earlier trace before attempting this case.
 
-Advance after an unaided explanation and a correct changed case. If a concept is unclear, use the smallest matching worked example in the [separate solutions](../src/exercises/arithmetic/solutions.rs), then try a fresh case. Keep confidence as a separate observation, not a pass threshold. Record assistance and return for a [delayed check](LEARNING_RECORD.md#next-available-session).
+A navigation observation enters a terminal goal and gives reward `2`. Your old estimate is `4`, discount is `0.5`, and this is the entry's second visit.
 
-The CLI tests and numerical reference checks establish program behavior for their covered cases. Your prediction, explanation, and delayed changed-case attempt establish different evidence about your learning. Learner results remain pending until you make and record those attempts.
+**1. Predict:** write the target and updated estimate.
+
+**2. Do:** check your arithmetic using `td_update` in the marked learner-case space for [exercise 8](EXERCISES.md#8-one-td-update). If you have not implemented that task, attempt it with the guide's support first; record the help used.
+
+**3. Check:** run its exact test.
+
+```bash
+cargo test exercises::arithmetic::practice::exercise_8_td_update -- --exact --ignored
+```
+
+**4. Explain:** change the next state to a continuing state with estimate `6` and at least one remaining transition. Recalculate the target and explain which extra information now matters. Check the arithmetic independently as well as testing your implementation.
+
+**Stop or next:** record correctness, explanation, and assistance in the optional [assessment](LEARNING_RECORD.md#record-an-attempt). After an attempt, compare only the matching `td_update` function in the [separate solutions](../src/exercises/arithmetic/solutions.rs). At the next available session, try one [delayed prompt](LEARNING_RECORD.md#next-available-session); its feedback remains separate.
+
+Working code, independent explanation, and delayed performance are different evidence. Learner outcomes remain pending until you actually attempt and assess them.

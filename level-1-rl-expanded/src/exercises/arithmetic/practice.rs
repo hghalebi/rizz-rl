@@ -117,58 +117,78 @@ fn bellman_backup(_outcomes: &[(f64, f64, f64)], _discount: f64) -> f64 {
 #[ignore = "EXERCISE ONLY: implement discounted_return, then run with --ignored"]
 fn exercise_1_discounted_return() {
     cases::exercise_1(discounted_return);
+    // YOUR CASE: predict a new input and add an assertion here.
+    // Keep the shared acceptance call above; leave cases.rs unchanged.
 }
 
 #[test]
 #[ignore = "EXERCISE ONLY: implement weighted_expectation, then run with --ignored"]
 fn exercise_2_weighted_expectation() {
     cases::exercise_2(weighted_expectation);
+    // YOUR CASE: predict a new input and add an assertion here.
+    // Keep the shared acceptance call above; leave cases.rs unchanged.
 }
 
 #[test]
 #[ignore = "EXERCISE ONLY: implement td_target, then run with --ignored"]
 fn exercise_3_td_target() {
     cases::exercise_3(td_target);
+    // YOUR CASE: predict a new input and add an assertion here.
+    // Keep the shared acceptance call above; leave cases.rs unchanged.
 }
 
 #[test]
 #[ignore = "EXERCISE ONLY: implement is_probability_distribution, then run with --ignored"]
 fn exercise_4_is_probability_distribution() {
     cases::exercise_4(is_probability_distribution);
+    // YOUR CASE: predict a new input and add an assertion here.
+    // Keep the shared acceptance call above; leave cases.rs unchanged.
 }
 
 #[test]
 #[ignore = "EXERCISE ONLY: implement greedy_action, then run with --ignored"]
 fn exercise_5_greedy_action() {
     cases::exercise_5(greedy_action);
+    // YOUR CASE: predict a new input and add an assertion here.
+    // Keep the shared acceptance call above; leave cases.rs unchanged.
 }
 
 #[test]
 #[ignore = "EXERCISE ONLY: implement epsilon_greedy, then run with --ignored"]
 fn exercise_6_epsilon_greedy() {
     cases::exercise_6(epsilon_greedy);
+    // YOUR CASE: predict a new input and add an assertion here.
+    // Keep the shared acceptance call above; leave cases.rs unchanged.
 }
 
 #[test]
 #[ignore = "EXERCISE ONLY: implement update_mean, then run with --ignored"]
 fn exercise_7_update_mean() {
     cases::exercise_7(update_mean);
+    // YOUR CASE: predict a new input and add an assertion here.
+    // Keep the shared acceptance call above; leave cases.rs unchanged.
 }
 
 #[test]
 #[ignore = "EXERCISE ONLY: implement td_update, then run with --ignored"]
 fn exercise_8_td_update() {
     cases::exercise_8(td_update);
+    // YOUR CASE: predict a new input and add an assertion here.
+    // Keep the shared acceptance call above; leave cases.rs unchanged.
 }
 
 #[test]
 #[ignore = "EXERCISE ONLY: implement q_learning_target, then run with --ignored"]
 fn exercise_9_q_learning_target() {
     cases::exercise_9(q_learning_target);
+    // YOUR CASE: predict a new input and add an assertion here.
+    // Keep the shared acceptance call above; leave cases.rs unchanged.
 }
 
 #[test]
 #[ignore = "EXERCISE ONLY: implement bellman_backup, then run with --ignored"]
 fn exercise_10_bellman_backup() {
     cases::exercise_10(bellman_backup);
+    // YOUR CASE: predict a new input and add an assertion here.
+    // Keep the shared acceptance call above; leave cases.rs unchanged.
 }

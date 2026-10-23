@@ -41,13 +41,19 @@ The planner and TD learner target the same finite-horizon objective. The sampler
 Use the exact selector listed in the [arithmetic catalog](guides/EXERCISES.md) or [composition lesson](guides/COMPOSITION_LESSON.md):
 
 ```bash
-cargo test exercises::arithmetic::practice::exercise_1_discounted_return -- --exact --ignored
+cargo test \
+  exercises::arithmetic::practice::exercise_1_discounted_return \
+  -- --exact --ignored
 cargo test exercises::arithmetic::solutions::exercise_1_discounted_return -- --exact
 cargo test exercises::composition::practice::map_laws -- --exact --ignored
 cargo test exercises::composition::solutions::map_laws -- --exact
 ```
 
 The 17 starter tests are deliberately ignored in ordinary checks. An untouched selected starter fails at `todo!()`. Reference solutions run in normal `cargo test`. Filtering selects which tests run; all code in that target must still compile, so an unrelated syntax or type error can block the selected task. Keep other TODOs intact while working on one task.
+
+For help interpreting a failure, use the [exercise feedback guide](guides/EXERCISES.md). Each practice test has a marked place for your own cases; shared acceptance cases stay intact. Worked demonstrations are selectable one concept at a time, so you can ask for focused support without running the complete answer tour.
+
+When stopping, save a [three-line restart note](guides/LEARNING_RECORD.md#quick-restart). Delayed prompts have [separate feedback](guides/RETRIEVAL_SOLUTIONS.md); open only the section you want to check after an attempt.
 
 ## Check the lab
 
@@ -75,6 +81,7 @@ Tests cover exact evaluator agreement, probability and terminal behavior, sample
 - [Interactive labs](guides/INTERACTIVE_LABS.md): optional extensions; several ask you to implement new behavior.
 - [Command migration](guides/maintenance/COMMAND_MIGRATION.md): equivalents for older commands and source paths.
 - [Structure review and plan](guides/maintenance/STRUCTURE_REVIEW_AND_PLAN.md): current structural delivery status.
+- [Learner experience plan and delivery](guides/maintenance/LEARNER_EXPERIENCE_PLAN.md): focused activities, feedback, restart support, and verification boundaries.
 - [Pedagogy review](guides/PEDAGOGY_REVIEW.md) and [improvement plan](guides/IMPROVEMENT_PLAN.md): dated research and earlier delivery history, with learner outcomes still pending.
 
 If a command selects `rizz-rl`, you are explicitly using the historical scratch manifest. Return to the repository root and use the commands above. The scratch program has different rewards and an incomplete probability distribution, so its numerical output is not the reference baseline.

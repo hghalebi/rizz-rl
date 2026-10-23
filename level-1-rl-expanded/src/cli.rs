@@ -354,7 +354,7 @@ fn first_step(world: &DatingWorld) {
         "Expected immediate reward = sum(branch probability * reward) = {immediate_reward:.6}"
     );
     println!("Boldness has no effect on the first step: JustMet always uses Ask=0.7, Story=0.3.");
-    println!("Next experiment: evaluate --horizon 1, then evaluate --horizon 2.");
+    println!("Optional experiment: evaluate --horizon 1, then evaluate --horizon 2.");
 }
 
 fn returns(discount: f64) {
@@ -385,7 +385,7 @@ fn returns(discount: f64) {
         "Discounted return G: {:.6}",
         discounted_return(&trajectory, discount)
     );
-    println!("Next experiment: predict G for --discount 0, 0.5, and 1 before running them.");
+    println!("Optional experiment: predict G for --discount 0, 0.5, and 1 before running them.");
 }
 
 fn evaluate(world: &DatingWorld, settings: Evaluation) {
@@ -410,7 +410,7 @@ fn evaluate(world: &DatingWorld, settings: Evaluation) {
     );
     println!("Expected return E[G]: {score:.6}");
     println!("E[G] averages complete returns using their path probabilities.");
-    println!("Next experiment: change only --horizon, then explain the change in E[G].");
+    println!("Optional experiment: change only --horizon, then explain the change in E[G].");
 }
 
 fn sweep(world: &DatingWorld, horizon: usize, discount: f64) {
@@ -428,7 +428,7 @@ fn sweep(world: &DatingWorld, horizon: usize, discount: f64) {
         println!("Best on this grid: boldness={boldness:.1}, expected return={score:.6}");
     }
     println!("Scores within 1e-12 tie and keep the lower boldness. This searches only the 11 displayed candidates.");
-    println!("Next experiment: compare --boldness 0.3, or use --help for smaller steps.");
+    println!("Optional experiment: compare --boldness 0.3, or use --help for smaller steps.");
 }
 
 fn compare(world: &DatingWorld, settings: Evaluation) {
@@ -459,7 +459,7 @@ fn compare(world: &DatingWorld, settings: Evaluation) {
     }
     println!("Both columns evaluate the same model and policy; small differences come from floating-point arithmetic.");
     println!("Bellman evaluation reuses (state, steps remaining) values; the cache count excludes base cases.");
-    println!("Next experiment: explain why V_0 is zero and V_1 matches first-step.");
+    println!("Optional experiment: explain why V_0 is zero and V_1 matches first-step.");
 }
 
 #[cfg(test)]

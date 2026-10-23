@@ -93,6 +93,10 @@ def check_lesson_commands():
             continue
         source = document.read_text().replace("\\\n", " ")
         for line in source.splitlines():
+            # Numbered lesson steps indent their fenced commands. Check those
+            # commands just like a top-level block, so rearranging prose cannot
+            # silently remove a runnable example from validation.
+            line = line.lstrip()
             if re.match(r"^cargo run(?: |$)", line):
                 commands.add(tuple(shlex.split(line, comments=True)))
     if not commands:
