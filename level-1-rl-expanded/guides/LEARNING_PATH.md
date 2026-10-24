@@ -308,7 +308,14 @@ A passing assertion checks agreement with the expected result you entered. Indep
 
 **Check and explain:** the sampler uses the model, but the learner receives observations. Its values use both state and remaining horizon. Compare several seeds and budgets without expecting error to decrease in every run. The policy stays fixed throughout training.
 
-The same claim is a test, [`supplied_trace_uses_bootstrap_and_per_entry_visit_counts`](../src/experience/tests.rs): for the supplied trace the target is 3, the learning rate 0.5, and the new value 2. Predict each number it asserts, then run:
+**Confirm:** [`supplied_trace_uses_bootstrap_and_per_entry_visit_counts`](../src/experience/tests.rs) checks both `JustMet` updates from the supplied trace. Each row is one update:
+
+| `JustMet` visit | Previous value | Target | Learning rate | New value |
+| --- | ---: | ---: | ---: | ---: |
+| First | 0 | 3 | 1 | 3 |
+| Second | 3 | 1 | 0.5 | 2 |
+
+Run it after your attempt, then explain why each row follows:
 
 ```bash
 cargo test experience::tests::supplied_trace_uses_bootstrap_and_per_entry_visit_counts -- --exact
