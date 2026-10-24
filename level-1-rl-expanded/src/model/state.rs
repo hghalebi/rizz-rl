@@ -32,7 +32,7 @@ impl State {
     ];
 
     /// Whether the meaningful interaction has ended.
-    /// `Goodbye ─► terminal`; MutualInterest still has one final Goodbye transition
+    /// `Goodbye ──► terminal`; MutualInterest still has one final Goodbye transition
     /// Invariant: the reward for arriving at Goodbye counts even though no future follows it.
     pub(crate) fn is_terminal(&self) -> bool {
         matches!(self, Self::Goodbye)

@@ -50,7 +50,7 @@ fn extend_one_step(
     possible_transitions(policy, world, &current_state).map(|transition| {
         let next_state = transition.to_state;
 
-        // Each branch clones the shared past; moving it into one child would leave none for the others.
+        // Each branch clones the shared past; moving it into one child leaves none for the others.
         let mut extended_trajectory = trajectory_so_far.clone();
         extended_trajectory.push(transition);
 

@@ -1,4 +1,8 @@
 //! Run a parsed command: write its output, then choose the exit code.
+//!
+//! Question: once a command is validated, how does it run, and which exit code results?
+//! Example: a usage mistake prints one line on stderr and exits 2; `sweep | head -3` exits 0.
+//! Predict: when an error occurs, what appears on stdout?
 
 use std::fmt;
 use std::io::{self, Write};
@@ -33,7 +37,7 @@ impl From<io::Error> for RunError {
 }
 
 /// Parse the arguments, run the command, and turn the outcome into an exit code.
-/// `usage error ─► 2`,  `refused learning step ─► 2`,  `closed pipe ─► 0`,  `other write error ─► 1`
+/// `usage error ──► 2`,  `refused learning step ──► 2`,  `closed pipe ──► 0`,  `other write error ──► 1`
 /// Invariant: an error prints one line on stderr and nothing on stdout.
 pub(crate) fn run() -> ExitCode {
     let options = match parse(std::env::args().skip(1)) {

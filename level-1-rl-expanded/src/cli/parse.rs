@@ -1,4 +1,8 @@
 //! Turn command-line text into a validated `Command`, or explain what is wrong.
+//!
+//! Question: how do argument words become one validated `Command`, and where does checking stop?
+//! Example: `evaluate --horizon 7` is refused with the accepted range before any tree is expanded.
+//! Predict: with `--horizon 2 --horizon 3`, is the second value even parsed?
 
 use super::command::{default_policy, Command, Evaluation, Options};
 use super::command_name::CommandName;

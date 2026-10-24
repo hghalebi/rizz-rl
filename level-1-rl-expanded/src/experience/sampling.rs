@@ -12,7 +12,7 @@ use crate::probability::Distribution;
 const MASS_TOLERANCE: f64 = 1e-12;
 
 /// Pick one branch by inverse cumulative sampling: the draw lands in one segment of [0, 1).
-/// `|──0.25──|───────0.75───────|   draw 0.2 ─► first,  draw 0.25 or 0.8 ─► second`
+/// `|──0.25──|────0.75────|  draw 0.2 ──► first;  0.25 or 0.8 ──► second`
 /// Invariant: malformed input is refused before drawing; a zero-mass branch is never chosen.
 /// Predict: which segment owns the draw exactly at 0.25?
 pub(super) fn select_outcome<T>(
@@ -34,7 +34,7 @@ pub(super) fn select_outcome<T>(
     if (mass - 1.0).abs() > MASS_TOLERANCE {
         return Err(LearningError::UnnormalizedMass(mass));
     }
-    // Scaling by the accepted mass absorbs roundoff within MASS_TOLERANCE; it does not repair bad models.
+    // Scaling by the accepted mass absorbs roundoff within MASS_TOLERANCE; it repairs nothing.
     let threshold = draw * mass;
     let first_segment_past_threshold = distribution
         .outcomes
@@ -61,7 +61,7 @@ pub(super) fn select_outcome<T>(
 }
 
 /// Draw one action from the policy, then one next state from the world, and record the step.
-/// `state ──policy, action_draw──► action ──world, next_state_draw──► next_state`
+/// `state ──policy, draw 1──► action ──world, draw 2──► next_state`
 /// Invariant: the sampler sees the model; the learner later sees only this Transition.
 pub(super) fn sample_transition(
     policy: &Policy,
@@ -77,7 +77,7 @@ pub(super) fn sample_transition(
     let action = select_outcome(&actions, action_draw)?;
     let next_states = world.possible_next_states(state, action);
     let next_state = select_outcome(&next_states, next_state_draw)?;
-    // The selections borrow the local distributions; `*` copies the chosen values out before those drop.
+    // The selections borrow local distributions; `*` copies the chosen values out before they drop.
     Ok(Transition {
         from_state: *state,
         action: *action,

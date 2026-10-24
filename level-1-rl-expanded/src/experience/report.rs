@@ -22,7 +22,7 @@ pub(crate) struct LearningReport {
 
 /// Train on sampled episodes, then compute the exact value of the same toy setting beside it.
 /// `learned = table.value(JustMet, h)`,  `exact = evaluate_value(JustMet, h).expected_return`
-/// Invariant: the learner never sees the exact value; agreement says nothing about the model's realism.
+/// Invariant: the learner never sees the exact value; agreement proves nothing about realism.
 /// Predict: what might one lucky seed conceal?
 pub(crate) fn run(config: &LearningConfig) -> Result<LearningReport, LearningError> {
     let table = train(config)?;

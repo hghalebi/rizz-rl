@@ -1,4 +1,8 @@
 //! Every reason command-line text can be refused, with the message the user sees.
+//!
+//! Question: what can go wrong with the typed text, and what does the user read?
+//! Example: `--horizon 7` prints `--horizon requires an integer in [0, 6]; got '7'`.
+//! Predict: which variant carries a refused `learn-value` setting such as `--episodes 0`?
 
 use std::fmt;
 use std::ops::RangeInclusive;

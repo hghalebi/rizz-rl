@@ -10,7 +10,7 @@ use crate::probability::Distribution;
 /// Join the agent's choice and the world's response into one weighted step.
 /// ```text
 /// State ──policy──► Distribution<Action> ──world──► Distribution<next State>
-///   collapses to   State ──► Distribution<Transition>,   P(a, s' | s) = π(a|s) · P(s'|s, a)
+///   collapses to   State ──► Distribution<Transition>,  P(a, s'|s) = π(a|s) · P(s'|s, a)
 /// ```
 /// Invariant: `and_then` multiplies the two chances: Ask 0.70 · Engaged-given-Ask 0.80 = 0.56.
 /// Predict: if Ask's chance halves and the rest moves to Story, does P(Engaged | Ask) change?

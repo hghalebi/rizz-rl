@@ -27,6 +27,6 @@ pub(crate) fn discounted_return(trajectory: &[Transition], discount: f64) -> f64
     discount_weights(discount)
         .zip(trajectory)
         .map(|(weight, transition)| weight * transition.reward)
-        // Start from an explicit 0.0: `sum()` of an empty history is -0.0, which prints as -0.000000.
+        // Start from an explicit 0.0: an empty `sum()` is -0.0, which would print as -0.000000.
         .fold(0.0, |total, term| total + term)
 }

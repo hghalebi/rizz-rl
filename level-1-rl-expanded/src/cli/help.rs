@@ -1,4 +1,8 @@
 //! The `--help` text: the user's view of every command and option.
+//!
+//! Question: what can a user type, and which options apply to which command?
+//! Example: `--seed` applies only to `learn-value`; `--verbose` applies to every command.
+//! Predict: which test keeps this text and `CommandName::accepts` in agreement?
 
 pub(super) const HELP: &str = "A small laboratory for planning and learning policy values.
 Planning commands evaluate a known model exactly; learn-value uses sampled episodes.

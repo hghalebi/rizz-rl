@@ -54,7 +54,7 @@ A complete path needs both its action and its conditional response. This does no
 
 After your attempt, compare the [worked one-step calculation](DEEP_RL_COMPANION.md#36-a-complete-one-step-calculation). For the implementation, follow [`possible_transitions`](../src/planning/transitions.rs) into [`Distribution::and_then`](../src/probability/composition.rs). `State` and `Action` are enum alternatives; a `Vec<(T, f64)>` holds weighted branches. [Exercise 4](EXERCISES.md#4-probability-validation) is optional practice in validating those weights.
 
-The same claim exists as a test: it asserts the two path probabilities 0.56 and 0.12. Open [`first_step_joint_probabilities_match_the_hand_calculation`](../src/tests.rs), predict each number it asserts, then run:
+The same claim is a test, [`first_step_joint_probabilities_match_the_hand_calculation`](../src/tests.rs): it asserts the two path probabilities 0.56 and 0.12. Predict each number it asserts, then run:
 
 ```bash
 cargo test tests::first_step_joint_probabilities_match_the_hand_calculation -- --exact
@@ -103,7 +103,7 @@ cargo run -- returns --discount 0.5
 
 The production version, [`discounted_return`](../src/planning/returns.rs), borrows a trajectory instead of a reward slice and takes its weights `1, γ, γ², ...` from `discount_weights`. Both score rewards across time. The [return reference](DEEP_RL_COMPANION.md#33-discounted-return) adds the notation.
 
-A test shows those weights at work: the same supplied history is worth 0 with one step counted but 2.5 with two. Open [`the_greedy_action_can_depend_on_remaining_horizon`](../src/values/tests.rs), predict each number it asserts, then run:
+The same claim is a test, [`the_greedy_action_can_depend_on_remaining_horizon`](../src/values/tests.rs): the same supplied history is worth 0 with one step counted but 2.5 with two. Predict each number it asserts, then run:
 
 ```bash
 cargo test values::tests::the_greedy_action_can_depend_on_remaining_horizon -- --exact
@@ -174,7 +174,7 @@ cargo run -- evaluate --horizon 1
 
 A longer horizon can include penalties as well as rewards. It need not improve the score. [`State::is_terminal`](../src/model/state.rs) defines the task ending; [`extend_one_step`](../src/planning/rollout.rs) preserves terminal histories. For Rust practice, identify the consumed path, borrowed model, and cloned histories needed for separate branches. The [terminal-state reference](DEEP_RL_COMPANION.md#23-terminal-and-absorbing-states) expands the distinction.
 
-The boundary is also a test: every history from `LowInterest` has exactly one step, ends in `Goodbye`, and still keeps its reward of 2. Open [`reaching_goodbye_stops_history_without_losing_probability`](../src/tests.rs), predict each number it asserts, then run:
+The same claim is a test, [`reaching_goodbye_stops_history_without_losing_probability`](../src/tests.rs): every history from `LowInterest` has exactly one step, ends in `Goodbye`, and still keeps its reward of 2. Predict each number it asserts, then run:
 
 ```bash
 cargo test tests::reaching_goodbye_stops_history_without_losing_probability -- --exact
@@ -220,7 +220,7 @@ Then change both continuation values to zero. Explain which information still de
 
 Read [`values::evaluate_value`](../src/values.rs) beside [`expected_return_of`](../src/planning/evaluation.rs). Both average actions under the supplied policy; taking a maximum would answer a different question. The cached key includes state and remaining horizon, while policy and discount stay fixed for this evaluation. The [dynamic-programming reference](DEEP_RL_COMPANION.md#40-dynamic-programming) gives the recurrence.
 
-The agreement is also a test: both evaluators match for every state, horizon, discount, and boldness it tries. Open [`bellman_matches_complete_tree_across_states_horizons_and_parameters`](../src/values/tests.rs), predict each number it asserts, then run:
+The same claim is a test, [`bellman_matches_complete_tree_across_states_horizons_and_parameters`](../src/values/tests.rs): both evaluators agree for every state, horizon, discount, and boldness it tries. Predict each number it asserts, then run:
 
 ```bash
 cargo test values::tests::bellman_matches_complete_tree_across_states_horizons_and_parameters -- --exact
@@ -257,7 +257,7 @@ cargo run -- sweep --horizon 1
 
 [`evaluate_policy_grid` and `best_policy`](../src/planning/search.rs) evaluate candidates and select the best available one. Explain why `reduce` returns an `Option`, and what it returns for an empty grid. [`Policy::possible_actions`](../src/model/policy.rs) defines what boldness changes. Use the [grid reference](DEEP_RL_COMPANION.md#38-grid-search) and [exploration distinction](DEEP_RL_COMPANION.md#important-nuance-stochasticity-is-not-automatically-exploration) when needed.
 
-The tie rule is also a test: at discount 0 all eleven candidates score 0.22, and the reported winner is boldness 0.0. Open [`zero_discount_does_not_create_a_spurious_preference_for_boldness`](../src/tests.rs), predict each number it asserts, then run:
+The same claim is a test, [`zero_discount_does_not_create_a_spurious_preference_for_boldness`](../src/tests.rs): at discount 0 all eleven candidates score 0.22, and the reported winner is boldness 0.0. Predict each number it asserts, then run:
 
 ```bash
 cargo test tests::zero_discount_does_not_create_a_spurious_preference_for_boldness -- --exact
@@ -308,7 +308,7 @@ A passing assertion checks agreement with the expected result you entered. Indep
 
 **Check and explain:** the sampler uses the model, but the learner receives observations. Its values use both state and remaining horizon. Compare several seeds and budgets without expecting error to decrease in every run. The policy stays fixed throughout training.
 
-One update is also a test: [`supplied_trace_uses_bootstrap_and_per_entry_visit_counts`](../src/experience/tests.rs) asserts the target 3, the learning rate 0.5, and the new value 2 from the supplied trace. Predict each number it asserts, then run:
+The same claim is a test, [`supplied_trace_uses_bootstrap_and_per_entry_visit_counts`](../src/experience/tests.rs): for the supplied trace the target is 3, the learning rate 0.5, and the new value 2. Predict each number it asserts, then run:
 
 ```bash
 cargo test experience::tests::supplied_trace_uses_bootstrap_and_per_entry_visit_counts -- --exact

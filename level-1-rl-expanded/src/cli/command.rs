@@ -1,4 +1,8 @@
 //! What a validated command line means: one experiment and its settings.
+//!
+//! Question: once the text is validated, what exactly will run?
+//! Example: `compare --horizon 2` becomes `Compare` with boldness 0.3, horizon 2, discount 0.95.
+//! Predict: which commands print the exact-planning banner, and which do not?
 
 use crate::experience::LearningConfig;
 use crate::model::Policy;

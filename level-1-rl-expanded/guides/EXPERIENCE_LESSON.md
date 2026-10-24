@@ -88,7 +88,7 @@ Some displayed entries cannot be reached from the chosen initial state and horiz
 
 With learning rate `1 / visits`, each entry averages the targets it has seen. Those targets use continuation estimates that can change during training. This is not simply a mean of complete observed episode returns. [Exercise 7](EXERCISES.md#7-incremental-mean-return), `update_mean`, isolates the latter arithmetic; explain where its new return would come from before comparing the two uses.
 
-In [`experience/sampling.rs`](../src/experience/sampling.rs), follow `sample_transition` only if you want the Rust detail: the sampler borrows choices, then clones the selected values into an owned observation. `ValueTable::observe` never calls the world or [exact evaluator](../src/values.rs).
+In [`experience/sampling.rs`](../src/experience/sampling.rs), follow `sample_transition` only if you want the Rust detail: the sampler borrows choices, then copies the selected values into an owned observation. `ValueTable::observe` never calls the world or [exact evaluator](../src/values.rs).
 
 </details>
 

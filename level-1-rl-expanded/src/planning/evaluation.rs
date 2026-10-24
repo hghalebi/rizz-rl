@@ -10,9 +10,9 @@ use super::{discounted_return, enumerate_trajectories};
 use crate::model::{DatingWorld, Policy, State};
 use crate::probability::expected_value;
 
-/// Score a policy from JustMet: every history's return, weighted by that history's chance.
+/// Score a policy from JustMet: discount inside each history, then weight histories by chance.
 /// `E[G] = Σ P(history) · G(history)`;  returns 2 @ 0.75 and 6 @ 0.25 give 3
-/// Invariant: discounting acts inside one history; probability weighting acts across histories.
+/// Invariant: the histories' chances still sum to 1; branching moves mass, never creates it.
 /// Predict: could a guaranteed return of 3 hide a different risk from this pair?
 pub(crate) fn expected_return_of(
     policy: &Policy,
@@ -32,7 +32,6 @@ pub(crate) fn expected_return_of(
 
     let probability_mass = possible_trajectories.total_probability();
 
-    // Branching redistributes probability mass; it must never create or destroy it.
     if (probability_mass - 1.0).abs() > 1e-9 {
         warn!(
             probability_mass,

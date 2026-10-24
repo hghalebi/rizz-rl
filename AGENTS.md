@@ -6,7 +6,7 @@ When clarity for a learner conflicts with brevity or production polish, choose c
 
 ## Before you edit
 
-1. Find the guide task that points at the code. Most are `**Read:**` lines in the [learning path](level-1-rl-expanded/guides/LEARNING_PATH.md).
+1. Find the guide task that points at the code. Most are the code links inside each session's optional-detail block in the [learning path](level-1-rl-expanded/guides/LEARNING_PATH.md).
 2. Keep whatever that task asks the learner to find.
    - Session 2 asks for the weight sequence `1, γ, γ², ...` from `discount_weights`, and which kind of weight each function uses.
    - Session 5 asks why `reduce` returns an `Option` in `best_policy`.
@@ -64,7 +64,7 @@ Above every function, method, struct, and enum, as `///`:
 python3 scripts/check.py
 ```
 
-CI runs the same script with Rust 1.95.0. It checks formatting, Clippy, tests, document links, lesson commands, and exercise selectors.
+CI runs the same script with Rust 1.95.0. It checks formatting, Clippy, rustdoc, tests, document links, lesson commands, and exercise selectors.
 
 ## Where things are
 

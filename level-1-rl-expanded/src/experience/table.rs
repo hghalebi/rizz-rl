@@ -1,7 +1,7 @@
 //! Checkpoint 11: the value table and `observe`, one TD(0) update per observed transition.
 //!
 //! Question: how does one observed transition correct one stored estimate?
-//! Example: estimate 4, target 10, fourth visit: 4 + (1/4) * (10 - 4) = 5.5.
+//! Example: estimate 4, target 10, fourth visit: 4 + (1/4) · (10 - 4) = 5.5.
 //! Predict: do (h = 2, JustMet) and (h = 1, JustMet) share one visit count?
 
 use std::collections::HashMap;
@@ -65,7 +65,7 @@ impl ValueTable {
     }
 
     /// Move one entry toward a one-transition target, using that entry's own visit count.
-    /// `target = r + γ · V(h-1, s')`,  `alpha = 1 / visits`,  `value' = value + alpha · (target - value)`
+    /// `target = r + γ·V(h-1, s')`, `alpha = 1/visits`, `value' = value + alpha·(target - value)`
     /// Invariant: every check runs before the single write, so a refused update changes nothing.
     /// Predict: is the first visit to a different entry also its fourth update?
     pub(super) fn observe(

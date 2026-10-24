@@ -24,7 +24,7 @@ mod exercises;
 #[cfg(test)]
 mod tests;
 
-/// The largest horizon any command accepts, so every experiment stays within the exact planner's work bound.
+/// The largest horizon any command accepts, so exact enumeration stays affordable.
 const MAX_HORIZON: usize = 6;
 
 fn main() -> std::process::ExitCode {

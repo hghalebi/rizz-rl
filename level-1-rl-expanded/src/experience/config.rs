@@ -16,7 +16,7 @@ pub(crate) const MAX_EPISODES: usize = 1_000_000;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct Discount(pub(super) f64);
 
-/// Everything one learning run needs: a validated policy, horizon, discount, episode budget, and seed.
+/// Everything one run needs: a validated policy, horizon, discount, episode budget, and seed.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct LearningConfig {
     pub(super) policy: Policy,
@@ -27,8 +27,8 @@ pub(crate) struct LearningConfig {
 }
 
 impl LearningConfig {
-    /// Check discount, horizon, and episodes; the policy was already validated by `Policy::try_new`.
-    /// Invariant: a `Policy` cannot land in the discount position by mistake, because the types differ.
+    /// Check discount, horizon, and episodes; the policy was validated by `Policy::try_new`.
+    /// Invariant: a `Policy` cannot land in the discount slot by mistake; the types differ.
     pub(crate) fn new(
         policy: Policy,
         horizon: usize,

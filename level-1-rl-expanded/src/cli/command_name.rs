@@ -1,4 +1,8 @@
 //! Command names: the experiment a user picks, such as `sweep` or `compare`.
+//!
+//! Question: which experiment did the user pick, and which flags may go with it?
+//! Example: `sweep` is the default when no command is typed; `sweep --boldness 0.5` is refused.
+//! Predict: what does the typo `evalute` produce?
 
 use std::fmt;
 use std::str::FromStr;

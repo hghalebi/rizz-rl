@@ -10,11 +10,11 @@
 //! Predict: which answer would a cache keyed only by state wrongly reuse?
 //!
 //! ```text
-//! V_0(s) = 0; V_h(terminal) = 0
-//! V_h(s) = sum_a pi(a|s) sum_s' P(s'|s,a) [R(s,a,s') + gamma V_(h-1)(s')]
+//! V(0, s) = 0;  V(h, terminal) = 0
+//! V(h, s) = Σ_a π(a|s) Σ_s' P(s'|s,a) · [R(s,a,s') + γ · V(h-1, s')]
 //! ```
 //!
-//! `possible_transitions` supplies the joint probability `pi * P` and reward.
+//! `possible_transitions` supplies the joint probability `π · P` and the reward.
 //! `steps_remaining` is h; the recursive call supplies the future value.
 //! The immediate reward is not discounted. Only the future value is.
 //! This evaluates a known model; it does not learn from experience.
@@ -27,7 +27,7 @@ use crate::planning::possible_transitions;
 /// The answer of one exact evaluation, plus how much work the cache did.
 pub(super) struct ValueEstimate {
     pub(super) expected_return: f64,
-    /// Distinct nonterminal (state, steps_remaining) subproblems evaluated; base cases do not count.
+    /// Distinct nonterminal (state, steps) subproblems evaluated; base cases do not count.
     pub(super) evaluated_states: usize,
 }
 

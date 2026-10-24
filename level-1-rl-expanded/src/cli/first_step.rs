@@ -14,10 +14,10 @@ use crate::probability::{expected_value, Distribution};
 
 /// Print every first-step branch from JustMet with its joint chance, then the total mass.
 /// ```text
-/// JustMet ──Ask   0.70──┬── Engaged     | Ask    0.80  ─► 0.56
-///                       └── LowInterest | Ask    0.20  ─► 0.14
-///         ──Story 0.30──┬── Engaged     | Story  0.60  ─► 0.18
-///                       └── LowInterest | Story  0.40  ─► 0.12
+/// JustMet ──Ask   0.70──┬── Engaged     | Ask    0.80  ──► 0.56
+///                       └── LowInterest | Ask    0.20  ──► 0.14
+///         ──Story 0.30──┬── Engaged     | Story  0.60  ──► 0.18
+///                       └── LowInterest | Story  0.40  ──► 0.12
 /// ```
 /// Invariant: `P(action and next_state) = P(action | state) · P(next_state | state, action)`.
 fn print_first_step_walkthrough(

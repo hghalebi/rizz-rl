@@ -1,4 +1,8 @@
 //! Flags: the options a user can add, such as `--horizon 4`.
+//!
+//! Question: which options can a user add, and how are they spelled?
+//! Example: `-h` and `--help` are the same flag.
+//! Predict: is `--Horizon` a flag?
 
 use std::fmt;
 

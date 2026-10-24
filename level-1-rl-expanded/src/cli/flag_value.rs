@@ -1,5 +1,8 @@
 //! Read the value after a flag and check it, so `parse` can stay short.
-//! Each helper either returns a checked value or a `CliError` naming the flag.
+//!
+//! Question: what makes a flag's value acceptable?
+//! Example: `--discount 0.5` is accepted; `--discount NaN` parses as `f64` but is refused.
+//! Predict: which helper refuses `--horizon --verbose`, where a flag sits in the value's place?
 
 use std::ops::RangeInclusive;
 
@@ -51,7 +54,7 @@ pub(super) fn parse_policy(flag: Flag, raw: String) -> Result<Policy, CliError> 
 }
 
 /// Parse a discount: a finite number in [0, 1].
-/// Invariant: "NaN" and "inf" parse as `f64` but are refused; a storable number is not a valid discount.
+/// Invariant: "NaN" and "inf" parse as `f64` but are refused; storable is not the same as valid.
 pub(super) fn unit_interval(flag: Flag, raw: String) -> Result<f64, CliError> {
     match raw.parse::<f64>() {
         Ok(number) if number.is_finite() && (0.0..=1.0).contains(&number) => Ok(number),

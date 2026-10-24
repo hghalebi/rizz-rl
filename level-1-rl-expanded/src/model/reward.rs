@@ -12,7 +12,7 @@ impl DatingWorld {
     /// Invariant: arms go from most specific to broadest, so a penalty wins over a general reward.
     pub(crate) fn reward_for(&self, state: &State, action: &Action, next_state: &State) -> f64 {
         match (state, action, next_state) {
-            // Off-policy guard: the policy never picks Coffee from LowInterest, but the reward model still prices it.
+            // Off-policy guard: the policy never picks this, but the reward model still prices it.
             (State::LowInterest, Action::Coffee, _) => -12.0,
 
             (State::Engaged, Action::Coffee, State::LowInterest) => -8.0,

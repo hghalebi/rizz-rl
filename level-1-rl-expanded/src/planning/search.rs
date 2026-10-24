@@ -65,11 +65,11 @@ pub(crate) fn evaluate_policy_grid(
 }
 
 /// Scores closer than this count as a tie.
-/// Exact arithmetic ties all candidates at γ = 0; summing many floating-point branches does not quite.
+/// Exact arithmetic ties all candidates at γ = 0; floating-point sums fall short by about 1e-16.
 const TIE_TOLERANCE: f64 = 1e-12;
 
 /// The first candidate that no later candidate beats by more than `TIE_TOLERANCE`.
-/// `best ─► candidate  only if  candidate.score > best.score + TIE_TOLERANCE`
+/// `best ──► candidate  only if  candidate.score > best.score + TIE_TOLERANCE`
 /// Invariant: ties keep the earlier, lower boldness; an empty grid has no best, so `None`.
 pub(crate) fn best_policy(evaluations: &[PolicyEvaluation]) -> Option<PolicyEvaluation> {
     evaluations.iter().copied().reduce(|best, candidate| {

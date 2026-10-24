@@ -74,8 +74,8 @@ Every lesson file opens with three lines: **Question**, **Example**, **Predict**
 | 4 | The world's response, then its rewards | [`model/world.rs`](src/model/world.rs), [`model/reward.rs`](src/model/reward.rs) | 1 |
 | 5 | One recorded step: a transition | [`model/transition.rs`](src/model/transition.rs) | 1 |
 | 6 | Grow every possible history | [`planning/rollout.rs`](src/planning/rollout.rs) | 3 |
-| 7 | Score one history: the discounted return | [`planning/returns.rs`](src/planning/returns.rs) | 2 |
-| 8 | Score uncertainty: the expectation | [`probability/expectation.rs`](src/probability/expectation.rs) | 2 |
+| 7 | Score one history: the discounted return | [`planning/returns.rs`](src/planning/returns.rs) | 2A |
+| 8 | Score uncertainty: the expectation | [`probability/expectation.rs`](src/probability/expectation.rs) | 2B |
 | 9 | Compare eleven policies | [`planning/search.rs`](src/planning/search.rs) | 5 |
 | 10 | Reuse smaller answers: Bellman evaluation | [`values.rs`](src/values.rs) | 4 |
 | 11 | Learn from observations: one TD(0) update | [`experience/table.rs`](src/experience/table.rs) | Capstone |

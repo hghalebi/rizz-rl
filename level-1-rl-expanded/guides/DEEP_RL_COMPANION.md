@@ -2906,7 +2906,7 @@ Two different checks protect it:
 | Compiler | Private field in [the policy file](../src/model/policy.rs) | Other modules cannot build `Policy { boldness: 1.5 }`. |
 | Runtime test | `Policy::try_new` | NaN, infinities, and values outside `[0, 1]` are rejected. |
 
-Why only boldness? Discount and horizon stay plain numbers, checked once at the CLI. That keeps the lesson arithmetic, such as `reward + discount * future_value`, reading like its formula.
+Why only boldness? In the planner, discount and horizon stay plain numbers, checked once at the CLI; the learner wraps its discount in a small `Discount` newtype after the same check. That keeps the lesson arithmetic, such as `reward + discount * future_value`, reading like its formula.
 
 Predict: boldness `1.5` would make one Playful action probability greater than one. Which action, and what happens to the others?
 

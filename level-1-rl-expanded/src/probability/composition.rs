@@ -31,7 +31,7 @@ impl<T> Distribution<T> {
                 .outcomes
                 .into_iter()
                 .flat_map(|(current_value, probability_so_far)| {
-                    // `move` copies `probability_so_far` into the inner closure, which outlives this one.
+                    // `move` copies `probability_so_far` into the inner, longer-lived closure.
                     next_step(current_value).outcomes.into_iter().map(
                         move |(next_value, next_probability)| {
                             let path_probability = probability_so_far * next_probability;
