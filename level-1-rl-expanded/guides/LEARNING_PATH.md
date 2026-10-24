@@ -220,7 +220,15 @@ Then change both continuation values to zero. Explain which information still de
 
 Read [`values::evaluate_value`](../src/values.rs) beside [`expected_return_of`](../src/planning/evaluation.rs). Both average actions under the supplied policy; taking a maximum would answer a different question. The cached key includes state and remaining horizon, while policy and discount stay fixed for this evaluation. The [dynamic-programming reference](DEEP_RL_COMPANION.md#40-dynamic-programming) gives the recurrence.
 
-The same claim is a test, [`bellman_matches_complete_tree_across_states_horizons_and_parameters`](../src/values/tests.rs): both evaluators agree for every state, horizon, discount, and boldness it tries. Predict each number it asserts, then run:
+**One case by hand:** take `V(1, JustMet)` with boldness `0.3` and discount `0.95`. Use the chances from the Session 1 table, with reward `+1` for reaching `Engaged` and `-2` for reaching `LowInterest`. Calculate the expected immediate reward, and say what continuation value is left when no steps remain after this one. Then inspect the `H = 1` row:
+
+```bash
+cargo run -- compare --horizon 1
+```
+
+**Transfer:** which part of your calculation changes at horizon `2`?
+
+**Confirm:** [`bellman_matches_complete_tree_across_states_horizons_and_parameters`](../src/values/tests.rs) is the broader software check: both evaluators agree in all 360 combinations of state, horizon, discount, and boldness it tries. Run it afterward; its cases are not a prediction task:
 
 ```bash
 cargo test values::tests::bellman_matches_complete_tree_across_states_horizons_and_parameters -- --exact
