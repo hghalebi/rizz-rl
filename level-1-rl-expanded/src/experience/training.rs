@@ -25,7 +25,7 @@ pub(super) fn train(config: &LearningConfig) -> Result<ValueTable, LearningError
         for steps_remaining in (1..=config.horizon).rev() {
             let observation =
                 sample_transition(&policy, &DatingWorld, &state, rng.random(), rng.random())?;
-            // `observe` only borrows the record; its `to_state` is then copied out for the next step.
+            // `observe` only borrows the record; `to_state` is then copied out for the next step.
             table.observe(steps_remaining, &observation)?;
             state = observation.to_state;
             if state.is_terminal() {

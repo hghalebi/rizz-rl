@@ -14,7 +14,7 @@ use crate::probability::Distribution;
 // ============================================================================
 /// The world's side of one step: which next states an action can lead to, and how likely each is.
 /// `(State, Action) ──P(s'|s,a)──► Distribution<State>`
-/// Invariant: these chances are conditional on the action; `possible_transitions` multiplies in π(a|s).
+/// Invariant: these chances are conditional on the action; `possible_transitions` applies π(a|s).
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct DatingWorld;
 
@@ -92,7 +92,7 @@ impl DatingWorld {
 
             (_, Action::Space | Action::Goodbye) => Distribution::certain(State::Goodbye),
 
-            // Teaching fallback: an unsupported action keeps the state; a strict model would refuse it.
+            // Teaching fallback: an unsupported pair keeps the state; a strict model would refuse it.
             (state, _) => Distribution::certain(*state),
         }
     }

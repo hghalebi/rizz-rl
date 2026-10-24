@@ -7,7 +7,7 @@
 use crate::experience::LearningConfig;
 use crate::model::Policy;
 
-/// Settings shared by evaluate and compare: which policy, how far ahead, how much the future counts.
+/// Settings shared by evaluate and compare: policy, horizon, and how much the future counts.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct Evaluation {
     pub(super) policy: Policy,
@@ -42,7 +42,7 @@ pub(super) struct Options {
     pub(super) verbose: bool,
 }
 
-/// The lesson's default dial setting, boldness 0.3; `try_new` accepts it because 0.3 lies in [0, 1].
+/// The lesson's default dial, boldness 0.3; `try_new` accepts it because 0.3 lies in [0, 1].
 pub(super) fn default_policy() -> Policy {
     Policy::try_new(0.3).expect("the default boldness 0.3 lies in [0, 1]")
 }

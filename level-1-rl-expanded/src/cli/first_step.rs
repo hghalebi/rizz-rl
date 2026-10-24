@@ -63,7 +63,7 @@ P(action | state) * P(next_state | state, action)
 
 /// The first-step experiment: the branch table, then the expected immediate reward.
 /// `E[r] = Σ P(branch) · reward(branch) = 0.22`, at every boldness
-/// Invariant: JustMet's action chances are fixed at Ask 0.7 and Story 0.3, so boldness cannot move them.
+/// Invariant: JustMet always uses Ask 0.7 and Story 0.3, so boldness cannot move these chances.
 pub(super) fn print(out: &mut impl Write, world: &DatingWorld) -> io::Result<()> {
     let policy = default_policy();
     let transitions = possible_transitions(&policy, world, &State::JustMet);

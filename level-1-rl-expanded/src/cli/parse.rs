@@ -32,7 +32,7 @@ pub(super) fn parse(arguments: impl IntoIterator<Item = String>) -> Result<Optio
             }
             continue;
         };
-        // `set_once` checks for a repeat before calling the closure, so a duplicate is refused unparsed.
+        // `set_once` rejects a repeated flag before the closure runs; its value is never parsed.
         match flag {
             Flag::Boldness => set_once(&mut policy, flag, || {
                 parse_policy(flag, value(&mut arguments, flag)?)

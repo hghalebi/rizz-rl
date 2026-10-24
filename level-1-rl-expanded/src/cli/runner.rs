@@ -37,7 +37,7 @@ impl From<io::Error> for RunError {
 }
 
 /// Parse the arguments, run the command, and turn the outcome into an exit code.
-/// `usage error ──► 2`,  `refused learning step ──► 2`,  `closed pipe ──► 0`,  `other write error ──► 1`
+/// `usage error ──► 2`, `refused learning step ──► 2`, `closed pipe ──► 0`, `write error ──► 1`
 /// Invariant: an error prints one line on stderr and nothing on stdout.
 pub(crate) fn run() -> ExitCode {
     let options = match parse(std::env::args().skip(1)) {
@@ -47,7 +47,7 @@ pub(crate) fn run() -> ExitCode {
     init_tracing(options.verbose);
     match execute(options.command, &mut io::stdout().lock()) {
         Ok(()) => ExitCode::SUCCESS,
-        // A reader such as `head` may close the pipe early; that is its choice, not a lesson failure.
+        // A reader such as `head` may close the pipe early: its choice, not a lesson failure.
         Err(RunError::Output(error)) if error.kind() == io::ErrorKind::BrokenPipe => {
             ExitCode::SUCCESS
         }
@@ -66,7 +66,7 @@ fn fail(error: impl fmt::Display) -> ExitCode {
 }
 
 /// Write the chosen command's lesson to `out`, then flush.
-/// Invariant: output goes through a writer, never `println!`, so a closed stdout is an error, not a panic.
+/// Invariant: all output goes through `out`, never `println!`, so a closed stdout cannot panic.
 pub(super) fn execute(command: Command, out: &mut impl Write) -> Result<(), RunError> {
     if command.plans_exactly() {
         writeln!(out, "Exact finite-horizon planning with a known model.\n")?;
