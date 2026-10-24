@@ -70,13 +70,15 @@ cargo test tests::first_step_joint_probabilities_match_the_hand_calculation -- -
 <a id="return-activity"></a>
 ### 2A. Score one reward sequence
 
-**Purpose:** turn rewards along one path into one return. Allow roughly 10 to 20 minutes. You need a slice and a loop, not the full planner.
+**Goal:** turn the rewards along one path into one number, the return.
 
-Use rewards `[1, 2, 4]` and discount `0.5`. The first reward counts immediately. Each step of delay adds another factor of the discount. These are consecutive rewards, not alternative outcomes.
+**You need:** a slice and a `for` loop, nothing from the planner. Allow 10 to 20 minutes; stopping after any step is fine.
 
-**1. Predict:** calculate this path's return on paper. Which rewards would matter if the discount were zero?
+Use rewards `[1, 2, 4]` and discount `0.5`. The first reward counts immediately. Each step of delay multiplies a reward by one more factor of the discount. These are consecutive rewards on one path, not alternative outcomes.
 
-**2. Do:** implement only `discounted_return` in [`arithmetic/practice.rs`](../src/exercises/arithmetic/practice.rs). Its empty-input contract is in the function comment. Leave the other TODOs intact.
+**1. Predict:** calculate this path's return on paper. Which rewards would still matter if the discount were zero?
+
+**2. Do:** in [`src/exercises/arithmetic/practice.rs`](../src/exercises/arithmetic/practice.rs), implement only `discounted_return`. Its comment states the empty-input rule. Leave the other TODOs as they are.
 
 **3. Check:** run its exact starter test.
 
@@ -86,22 +88,53 @@ cargo test \
   -- --exact --ignored
 ```
 
-An untouched TODO is an expected starting failure. A failing assertion identifies a case to compare with your prediction. Zero selected tests is not a successful check; copy the full command. The [exercise feedback guide](EXERCISES.md#attempt-one-exercise) explains the other outcomes.
+| You see | It means |
+| --- | --- |
+| `not yet implemented: Exercise 1: implement discounted return` | The expected start: the TODO is still there. |
+| `test result: ok. 1 passed` | Your function passes the shared cases. Go to step 4. |
+| `test result: ok. 0 passed` with `1 ignored`, or `running 0 tests` | Nothing was checked: `--ignored` or part of the name is missing. Recopy the whole command. |
+| A compiler error or an assertion mismatch | Use the [feedback table](EXERCISES.md#read-the-feedback). |
 
-**4. Explain:** use `[2, -1, 4]` as a new case. Predict its return at discount `0` and at `1`, then check it using the marked learner-case space in your exercise-1 test. Explain why the first reward is undiscounted.
+**4. Explain:** for the new case `[2, -1, 4]`, predict the return at discount `0` and at `1`. Add each prediction as an assertion at the `// YOUR CASE` comment in `exercise_1_discounted_return`, then rerun step 3. Explain why the first reward is never discounted.
 
 <details>
-<summary>Optional help, reference, and Rust detail</summary>
+<summary>Stuck on the return idea? (math, no Rust)</summary>
 
-Ask what weight applies before any time has passed, then how that weight changes after one step. The [exercise-1 card](EXERCISES.md#1-discounted-return) supplies local support.
+Ask which weight applies before any time has passed, then how that weight changes after one more step. The [exercise-1 card](EXERCISES.md#1-discounted-return) has a different two-reward example to complete on paper.
 
-After your attempt, compare `discounted_return` in the [separate solutions](../src/exercises/arithmetic/solutions.rs). To inspect the fixed reward sequence one term at a time, use:
+</details>
+
+<details>
+<summary>Stuck on the Rust? (borrowing, no math)</summary>
+
+`rewards: &[f64]` is a borrowed view of the caller's numbers: your function reads them, and the caller keeps them. A `for` loop over a `&[f64]` hands you a `&f64` on each turn. If the compiler mentions `&f64`, that is a borrowing question, not a mistake in your return formula. For more practice with moves and borrows, use the [ownership probe](COMPOSITION_LESSON.md#1-optional-diagnostic-assess-two-skills-separately).
+
+</details>
+
+<details>
+<summary>After your attempt: compare, then read the production version</summary>
+
+Compare with `discounted_return` in the [separate solutions](../src/exercises/arithmetic/solutions.rs). Then print the same sequence one term per row:
 
 ```bash
 cargo run -- returns --discount 0.5
 ```
 
-The production version, [`discounted_return`](../src/planning/returns.rs), borrows a trajectory instead of a reward slice and takes its weights `1, γ, γ², ...` from `discount_weights`. Both score rewards across time. The [return reference](DEEP_RL_COMPANION.md#33-discounted-return) adds the notation.
+<a id="loop-to-pipeline"></a>
+**From your loop to the pipeline.** The production [`discounted_return`](../src/planning/returns.rs) does the same work as your loop, in four stages. Each stage produces one column of that output:
+
+| Stage | Produces | For `[1, 2, 4]` at `0.5` | Column |
+| --- | --- | --- | --- |
+| `discount_weights(0.5)` | weights, made one at a time on request | `1, 0.5, 0.25, ...` | `weight` |
+| `.zip(trajectory)` | `(weight, &Transition)` pairs | `(1, &step 0)`, `(0.5, &step 1)`, `(0.25, &step 2)` | one row each |
+| `.map(...)` | contributions, `weight * transition.reward` | `1, 1, 1` | `contribution` |
+| `.fold(0.0, ...)` | the accumulated total, starting at 0 | `0 -> 1 -> 2 -> 3` | `Discounted return G` |
+
+**Where borrowing happens:** the function takes `trajectory: &[Transition]`, so the caller keeps its history. `zip` walks that borrowed slice, so each pair holds a `&Transition`, and `transition.reward` copies one `f64` out of it.
+
+**Why it stops:** `discount_weights` never ends on its own, but it is lazy: it computes a weight only when `zip` asks for the next pair. `zip` stops as soon as either side runs out, so the three-step trajectory ends the pipeline after three pairs. Background: the [Rust Book on iterators](https://doc.rust-lang.org/book/ch13-02-iterators.html) and the [`zip` contract](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.zip).
+
+**Transfer:** if the history has one transition, how many contributions reach `fold`, and what stops the iterator?
 
 **Confirm:** [`the_greedy_action_can_depend_on_remaining_horizon`](../src/values/tests.rs) checks this claim in code: the same supplied history is worth 0 with one step counted but 2.5 with two. Run it after your attempt, then explain why each assertion follows:
 
@@ -109,9 +142,20 @@ The production version, [`discounted_return`](../src/planning/returns.rs), borro
 cargo test values::tests::the_greedy_action_can_depend_on_remaining_horizon -- --exact
 ```
 
+The [return reference](DEEP_RL_COMPANION.md#33-discounted-return) adds the notation.
+
 </details>
 
-**Stop or next:** your restart cue can name `discounted_return`, its unfinished case, and the command above. The next activity is [expectation](#expectation-activity).
+**Stop here or continue.** Save a [quick restart note](LEARNING_RECORD.md#quick-restart). For this activity it can read:
+
+```text
+Where I stopped: Activity 2A, discounted_return.
+What I observed or still do not understand: one line, plus any help used.
+Next action: src/exercises/arithmetic/practice.rs, discounted_return, then run
+  cargo test exercises::arithmetic::practice::exercise_1_discounted_return -- --exact --ignored
+```
+
+The default next activity is [expectation](#expectation-activity).
 
 <a id="expectation-activity"></a>
 ### 2B. Score alternative outcomes

@@ -3,6 +3,8 @@
 //! Question: what is one history worth when later rewards count for less?
 //! Example: rewards [1, 2, 4] at discount 0.5 give 1 + 1 + 1 = 3.
 //! Predict: what is left at discount 0? What changes at discount 1?
+//!
+//! New to iterators? `guides/LEARNING_PATH.md#loop-to-pipeline` maps each stage to a column.
 
 use std::iter::successors;
 
