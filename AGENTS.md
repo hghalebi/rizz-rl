@@ -20,6 +20,7 @@ When clarity for a learner conflicts with brevity or production polish, choose c
 - Destructure tuples with full names, `(outcome, probability)`, never `.0` or `.1`; destructure newtypes, `let Discount(discount) = ..`.
 - Empty `f64` sums: `sum()` of an empty iterator is `-0.0`, which prints as `-0.000000`. Use `fold(0.0, ..)` where the input can be empty, as `discounted_return` does.
 - Exception, on purpose: `src/exercises/` is where learners write loops by hand. Leave its loops alone.
+- A pipeline a learner meets for the first time gets a stage-by-stage bridge from the loop it replaces, mapped to printed output. [Activity 2A](level-1-rl-expanded/guides/LEARNING_PATH.md#loop-to-pipeline) is the model.
 
 ## Comment card
 
@@ -40,7 +41,8 @@ Above every function, method, struct, and enum, as `///`:
 
 - Every lesson file opens with three `//!` lines: `Question:`, `Example:`, `Predict:`. Keep the example small enough to work on paper.
 - The eleven checkpoints are listed in the [lab README](level-1-rl-expanded/README.md) under "Read the code in checkpoint order". A new checkpoint goes there too, with its file and session.
-- Each learning-path session's optional-detail block names one test whose name states the session's claim, with the command that runs it alone. `check.py` verifies that every such exact selector matches one test, so renaming a test breaks CI until the guide is updated.
+- Each learning-path session's optional-detail block ends with one **Confirm** test whose name states the session's claim, with the command that runs it alone. It is a check after an attempt, never a prediction prompt. `check.py` verifies that every such exact selector matches one test, so renaming a test breaks CI until the guide is updated.
+- Never state a number right before asking the learner to predict it. A prediction uses a changed case; worked results come afterward, labelled **Confirm**. A large regression test is never a prediction task: give one hand-sized case first, as Session 4 does.
 
 ## Keep files small
 
