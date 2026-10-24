@@ -9,22 +9,16 @@ use super::Distribution;
 // ============================================================================
 // CHECKPOINT 8 — EXPECTATION: COLLAPSE MANY FUTURES INTO ONE SCORE
 // ============================================================================
-// E[value] = Σ probability(outcome) × value(outcome)
-// Read this as: score each possible outcome, then average using its chance.
-// A reward of +1 with probability 0.74 and -2 with probability 0.26 has expectation
-// 0.22. No single outcome needs to equal that average. Unlike a sample average,
-// this loop uses the supplied probabilities, so it needs no division by row count.
-// `&Distribution<T>` and `&T` borrow the data: scoring leaves it available for
-// another question, such as the probability of a particular event.
+/// Score every outcome, then average the scores using each outcome's own chance.
+/// `E[value] = Σ probability(outcome) · value(outcome)`
+/// Invariant: no division by the row count; the probabilities already sum to 1.
 pub(crate) fn expected_value<T>(
     distribution: &Distribution<T>,
     value_of: impl Fn(&T) -> f64,
 ) -> f64 {
-    let mut weighted_sum = 0.0;
-
-    for (outcome, probability) in &distribution.outcomes {
-        weighted_sum += probability * value_of(outcome);
-    }
-
-    weighted_sum
+    distribution
+        .outcomes
+        .iter()
+        .map(|(outcome, probability)| probability * value_of(outcome))
+        .sum()
 }

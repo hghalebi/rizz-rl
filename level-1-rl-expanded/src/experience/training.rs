@@ -13,21 +13,19 @@ use super::table::ValueTable;
 use super::LearningError;
 use crate::model::{DatingWorld, State};
 
+/// Sample `episodes` episodes from JustMet and feed every transition to `observe`, online.
+/// `for each episode: for h = horizon down to 1: sample ──► observe ──► move to the next state`
+/// Invariant: a loop, not a pipeline, because each step draws from the RNG and may stop early at Goodbye.
 pub(super) fn train(config: &LearningConfig) -> Result<ValueTable, LearningError> {
     let policy = config.policy;
-    // A seed repeats the draws under the same code and dependencies. Repeating
-    // an estimate does not establish its accuracy; compare it with the evaluator.
     let mut rng = ChaCha8Rng::seed_from_u64(config.seed);
     let mut table = ValueTable::new(config.discount);
     for _ in 0..config.episodes {
         let mut state = State::JustMet;
         for steps_remaining in (1..=config.horizon).rev() {
-            // Sample one action and one consequence, then update online. The
-            // later update in this episode cannot retroactively change this one.
             let observation =
                 sample_transition(&policy, &DatingWorld, &state, rng.random(), rng.random())?;
-            // observe only borrows the record, so the table keeps no reference
-            // to it; the episode then continues from a copy of its next state.
+            // `observe` borrows the record; afterwards its `to_state` is copied out to continue the episode.
             table.observe(steps_remaining, &observation)?;
             state = observation.to_state;
             if state.is_terminal() {

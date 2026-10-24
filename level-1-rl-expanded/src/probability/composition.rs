@@ -7,56 +7,39 @@
 use super::Distribution;
 
 impl<T> Distribution<T> {
-    // `map` changes every value while preserving every branch probability.
-    //
-    //     T @ p  ----transform---->  U @ p
-    //
-    // Example: ASCII labels "cat" @ 0.7 and "rust" @ 0.3 become byte lengths
-    // 3 @ 0.7 and 4 @ 0.3. The branch weights stay; only their values change.
-    // Taking `self` gives the loop ownership of each T, so it can consume a
-    // String without cloning it. After this call, use the returned distribution.
+    /// Transform every value and keep every branch probability.
+    /// `T @ p ──transform──► U @ p`
+    /// Invariant: the list of probabilities is untouched, so the total mass is too.
     pub(crate) fn map<U>(self, transform: impl Fn(T) -> U) -> Distribution<U> {
-        let mut transformed_outcomes = Vec::with_capacity(self.outcomes.len());
-
-        for (value, probability) in self.outcomes {
-            let transformed_value = transform(value);
-            transformed_outcomes.push((transformed_value, probability));
-        }
-
         Distribution {
-            outcomes: transformed_outcomes,
+            // `into_iter` hands the closure each owned `T`, so a `String` is moved, not cloned.
+            outcomes: self
+                .outcomes
+                .into_iter()
+                .map(|(value, probability)| (transform(value), probability))
+                .collect(),
         }
     }
 
-    // `and_then` continues every existing branch into more branches.
-    // It is the same general operation often called `flat_map` or `bind`.
-    //
-    // Probabilities multiply because reaching a new leaf requires BOTH:
-    //
-    // 1. reaching the current branch;
-    // 2. taking the next branch.
-    //
-    // Ask has probability 0.7; Engaged conditional on Ask has probability 0.8.
-    // Their complete branch has weight 0.7 * 0.8 = 0.56. This uses a conditional
-    // probability; it does not assume the world's response is independent of Ask.
-    // Total mass stays one if the input and every continuation are normalized.
-    // Predict: what happens to a weight of 0.2 when its continuation splits evenly?
+    /// Continue every branch into its own sub-branches; also called `flat_map` or `bind`.
+    /// `T @ p ──next_step──► U @ q   gives   U @ p·q`
+    /// Invariant: if the input and every continuation sum to 1, so does the result.
+    /// Predict: what happens to a weight of 0.2 when its continuation splits evenly?
     pub(crate) fn and_then<U>(self, next_step: impl Fn(T) -> Distribution<U>) -> Distribution<U> {
-        let mut combined_outcomes = Vec::new();
-
-        for (current_value, probability_so_far) in self.outcomes {
-            let possible_next_values = next_step(current_value);
-
-            for (next_value, next_probability) in possible_next_values.outcomes {
-                // P(whole path) = P(path so far) × P(next branch)
-                let path_probability = probability_so_far * next_probability;
-
-                combined_outcomes.push((next_value, path_probability));
-            }
-        }
-
         Distribution {
-            outcomes: combined_outcomes,
+            outcomes: self
+                .outcomes
+                .into_iter()
+                .flat_map(|(current_value, probability_so_far)| {
+                    // `move` copies `probability_so_far` into the inner closure, which outlives this one.
+                    next_step(current_value).outcomes.into_iter().map(
+                        move |(next_value, next_probability)| {
+                            let path_probability = probability_so_far * next_probability;
+                            (next_value, path_probability)
+                        },
+                    )
+                })
+                .collect(),
         }
     }
 }

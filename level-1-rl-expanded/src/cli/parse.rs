@@ -8,8 +8,8 @@ use super::flag_value::{integer_in, parse_policy, set_once, switch_on, unit_inte
 use crate::experience::{LearningConfig, MAX_EPISODES};
 use crate::MAX_HORIZON;
 
-// The parser is the only construction path for command settings. Every value
-// is validated before tracing or potentially expensive tree expansion begins.
+/// Turn the argument words into a validated `Command`, or the first `CliError` met.
+/// Invariant: every value is checked before tracing starts or any tree is expanded.
 pub(super) fn parse(arguments: impl IntoIterator<Item = String>) -> Result<Options, CliError> {
     let mut arguments = arguments.into_iter();
     let mut name = None;
@@ -28,8 +28,7 @@ pub(super) fn parse(arguments: impl IntoIterator<Item = String>) -> Result<Optio
             }
             continue;
         };
-        // Each closure runs only after `set_once` has rejected a repeated flag,
-        // so a duplicate is reported before its second value is even parsed.
+        // `set_once` checks for a repeat before calling the closure, so a duplicate is refused unparsed.
         match flag {
             Flag::Boldness => set_once(&mut policy, flag, || {
                 parse_policy(flag, value(&mut arguments, flag)?)

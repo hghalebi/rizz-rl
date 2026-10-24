@@ -9,12 +9,9 @@ use super::{Action, State};
 // ============================================================================
 // CHECKPOINT 5 — TRANSITIONS AND TRAJECTORIES
 // ============================================================================
-// One transition:
-//
-//     from_state ----action / reward----> to_state
-// Store all four pieces so we can score a history or learn from one observation.
-// A Transition contains no branch probability: the exact planner stores that
-// weight alongside it, while the sampled learner receives only what happened.
+/// One recorded step: where it started, what was chosen, what it earned, where it landed.
+/// `from_state ──action / reward──► to_state`
+/// Invariant: no probability inside; the planner stores that beside it, the learner never sees it.
 #[derive(Clone, Debug)]
 pub(crate) struct Transition {
     pub(crate) from_state: State,

@@ -7,22 +7,13 @@
 use crate::model::{DatingWorld, Policy, State, Transition};
 use crate::probability::Distribution;
 
-// Compose:
-//
-// State --policy--> Distribution<Action>
-// Action --world--> Distribution<NextState>
-//
-// into:
-//
-// State -----------> Distribution<Transition>
-//
-// From JustMet, Ask has chance 0.70 and Engaged given Ask has chance 0.80.
-// Their complete branch weighs 0.70 * 0.80 = 0.56; the second chance is conditional.
-// Each possible consequence owns a Transition. State and Action are Copy, so
-// every branch receives its own copy of the shared state and action.
-// `*state` reads through the borrow `&State` and copies the value it points to.
-// Predict: if Ask's chance halves and the remaining mass moves to Story, does
-// the conditional chance of Engaged given Ask change?
+/// Join the agent's choice and the world's response into one weighted step.
+/// ```text
+/// State ──policy──► Distribution<Action> ──world──► Distribution<next State>
+///   collapses to   State ──► Distribution<Transition>,   P(a, s' | s) = π(a|s) · P(s'|s, a)
+/// ```
+/// Invariant: `and_then` multiplies the two chances: Ask 0.70 · Engaged-given-Ask 0.80 = 0.56.
+/// Predict: if Ask's chance halves and the rest moves to Story, does P(Engaged | Ask) change?
 pub(crate) fn possible_transitions(
     policy: &Policy,
     world: &DatingWorld,
@@ -36,6 +27,7 @@ pub(crate) fn possible_transitions(
         possible_next_states.map(|next_state| {
             let transition_reward = world.reward_for(state, &action, &next_state);
 
+            // `*state` copies the value behind the borrow; `State` and `Action` are `Copy`.
             Transition {
                 from_state: *state,
                 action,

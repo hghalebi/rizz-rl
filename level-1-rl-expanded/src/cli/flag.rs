@@ -2,6 +2,7 @@
 
 use std::fmt;
 
+/// An option the user can pass; `from_argument` reads it and `Display` spells it back.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Flag {
     Boldness,
@@ -14,6 +15,7 @@ pub(super) enum Flag {
 }
 
 impl Flag {
+    /// Recognize a flag by its spelling; `-h` is an alias for `--help`.
     pub(super) fn from_argument(argument: &str) -> Option<Self> {
         match argument {
             "--boldness" => Some(Self::Boldness),

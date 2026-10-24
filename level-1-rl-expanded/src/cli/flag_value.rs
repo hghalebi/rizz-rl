@@ -7,6 +7,7 @@ use super::error::CliError;
 use super::flag::Flag;
 use crate::model::Policy;
 
+/// Store a flag's value once; a repeated flag is refused before its second value is parsed.
 pub(super) fn set_once<T>(
     slot: &mut Option<T>,
     flag: Flag,
@@ -19,7 +20,9 @@ pub(super) fn set_once<T>(
     Ok(())
 }
 
+/// Turn a boolean flag on once; a repeated switch is refused.
 pub(super) fn switch_on(switch: &mut bool, flag: Flag) -> Result<(), CliError> {
+    // `mem::replace` sets the switch and hands back its old value in one step.
     if std::mem::replace(switch, true) {
         Err(CliError::Repeated(flag))
     } else {
@@ -27,6 +30,7 @@ pub(super) fn switch_on(switch: &mut bool, flag: Flag) -> Result<(), CliError> {
     }
 }
 
+/// The word after a flag, refusing a missing value or another flag in its place.
 pub(super) fn value(
     arguments: &mut impl Iterator<Item = String>,
     flag: Flag,
@@ -37,8 +41,8 @@ pub(super) fn value(
         .ok_or(CliError::MissingValue(flag))
 }
 
-// Policy::try_new owns the boldness rule. The CLI only adds which flag and
-// which text were rejected, so the learner sees exactly what to correct.
+/// Parse `--boldness` through `Policy::try_new`, which owns the range rule.
+/// Invariant: the CLI only adds which flag and which text were refused, so the fix is obvious.
 pub(super) fn parse_policy(flag: Flag, raw: String) -> Result<Policy, CliError> {
     match raw.parse::<f64>().map(Policy::try_new) {
         Ok(Ok(policy)) => Ok(policy),
@@ -46,15 +50,16 @@ pub(super) fn parse_policy(flag: Flag, raw: String) -> Result<Policy, CliError> 
     }
 }
 
+/// Parse a discount: a finite number in [0, 1].
+/// Invariant: "NaN" and "inf" parse as `f64` but are refused; a storable number is not a valid discount.
 pub(super) fn unit_interval(flag: Flag, raw: String) -> Result<f64, CliError> {
-    // Parsing "NaN" or "inf" can succeed as an f64. A number that Rust can store
-    // is not necessarily a meaningful discount for this lesson.
     match raw.parse::<f64>() {
         Ok(number) if number.is_finite() && (0.0..=1.0).contains(&number) => Ok(number),
         _ => Err(CliError::NotUnitInterval { flag, raw }),
     }
 }
 
+/// Parse an integer and check that it lies in `range`.
 pub(super) fn integer_in(
     flag: Flag,
     raw: String,

@@ -9,11 +9,14 @@ use std::fmt;
 use crate::model::Policy;
 use crate::MAX_HORIZON;
 
+/// Upper bound on the episode budget, so a typo cannot start an hour-long run.
 pub(crate) const MAX_EPISODES: usize = 1_000_000;
 
+/// A discount in [0, 1], checked once by `LearningConfig::new`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct Discount(pub(super) f64);
 
+/// Everything one learning run needs: a validated policy, horizon, discount, episode budget, and seed.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct LearningConfig {
     pub(super) policy: Policy,
@@ -24,8 +27,8 @@ pub(crate) struct LearningConfig {
 }
 
 impl LearningConfig {
-    // Taking a Policy rather than a raw boldness means boldness was already
-    // validated, and it cannot be passed in the discount position by mistake.
+    /// Check discount, horizon, and episodes; the policy was already validated by `Policy::try_new`.
+    /// Invariant: a `Policy` cannot land in the discount position by mistake, because the types differ.
     pub(crate) fn new(
         policy: Policy,
         horizon: usize,

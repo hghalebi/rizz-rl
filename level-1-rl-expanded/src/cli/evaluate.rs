@@ -11,6 +11,8 @@ use crate::model::{DatingWorld, State};
 use crate::planning::{discounted_return, enumerate_trajectories};
 use crate::probability::expected_value;
 
+/// Enumerate every history for one policy, then print the probability-weighted return.
+/// `E[G] = Σ P(history) · G(history)`
 pub(super) fn print(
     out: &mut impl Write,
     world: &DatingWorld,

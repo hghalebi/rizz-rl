@@ -11,6 +11,8 @@ use crate::model::{DatingWorld, State};
 use crate::planning::expected_return_of;
 use crate::values::evaluate_value;
 
+/// For each horizon from 0 to H, print the tree value, the Bellman value, and their gap.
+/// Invariant: both columns evaluate the same model and policy; gaps come only from floating point.
 pub(super) fn print(
     out: &mut impl Write,
     world: &DatingWorld,

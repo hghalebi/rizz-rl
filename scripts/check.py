@@ -27,10 +27,10 @@ REQUIRED_TASKS = {
 }
 
 
-def run(*arguments, allow_failure=False):
+def run(*arguments, allow_failure=False, env=None):
     result = subprocess.run(
         arguments, cwd=ROOT, text=True, capture_output=True, timeout=180,
-        env={**os.environ, "CARGO_TERM_COLOR": "never"},
+        env={**os.environ, "CARGO_TERM_COLOR": "never", **(env or {})},
     )
     if result.returncode and not allow_failure:
         raise RuntimeError(f"{' '.join(arguments)}\n{result.stdout}{result.stderr}")
@@ -176,13 +176,16 @@ def check_exercises():
 
 
 def main():
-    for arguments in [
-        ("cargo", "fmt", "--all", "--", "--check"),
-        ("cargo", "clippy", "--locked", "--all-targets", "--", "-D", "warnings"),
-        ("cargo", "test", "--locked", "--all-targets"),
+    # Lesson comments are rustdoc; the doc build rejects broken formatting the way Clippy rejects warnings.
+    rustdoc_env = {"RUSTDOCFLAGS": "-D warnings"}
+    for arguments, env in [
+        (("cargo", "fmt", "--all", "--", "--check"), None),
+        (("cargo", "clippy", "--locked", "--all-targets", "--", "-D", "warnings"), None),
+        (("cargo", "doc", "--locked", "--no-deps", "--document-private-items", "--quiet"), rustdoc_env),
+        (("cargo", "test", "--locked", "--all-targets"), None),
     ]:
         print(f"CHECK: {' '.join(arguments)}", flush=True)
-        result = run(*arguments)
+        result = run(*arguments, env=env)
         if arguments[1] == "test":
             for line in result.stdout.splitlines():
                 if line.startswith("test result:"):

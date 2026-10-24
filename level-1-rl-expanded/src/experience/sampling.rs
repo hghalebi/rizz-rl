@@ -8,15 +8,13 @@ use super::LearningError;
 use crate::model::{DatingWorld, Policy, State, Transition};
 use crate::probability::Distribution;
 
+/// Total probability may miss 1 by this much and still count as normalized.
 const MASS_TOLERANCE: f64 = 1e-12;
 
-/// Cut [0, 1) into segments whose lengths are the branch probabilities.
-/// With weights [0.25, 0.75], draw 0.2 selects the first and 0.8 the second.
-/// This is inverse cumulative sampling; supplied draws make boundaries testable.
+/// Pick one branch by inverse cumulative sampling: the draw lands in one segment of [0, 1).
+/// `|──0.25──|───────0.75───────|   draw 0.2 ─► first,  draw 0.25 or 0.8 ─► second`
+/// Invariant: malformed input is refused before drawing; a zero-mass branch is never chosen.
 /// Predict: which segment owns the draw exactly at 0.25?
-/// Returning &T borrows the chosen value rather than cloning every alternative.
-/// Reject malformed distributions before drawing. Scale by their accepted mass
-/// to account only for roundoff within MASS_TOLERANCE; do not repair bad models.
 pub(super) fn select_outcome<T>(
     distribution: &Distribution<T>,
     draw: f64,
@@ -28,7 +26,7 @@ pub(super) fn select_outcome<T>(
         || distribution
             .outcomes
             .iter()
-            .any(|(_, p)| !p.is_finite() || !(0.0..=1.0).contains(p))
+            .any(|(_, probability)| !probability.is_finite() || !(0.0..=1.0).contains(probability))
     {
         return Err(LearningError::InvalidProbabilities);
     }
@@ -36,23 +34,35 @@ pub(super) fn select_outcome<T>(
     if (mass - 1.0).abs() > MASS_TOLERANCE {
         return Err(LearningError::UnnormalizedMass(mass));
     }
+    // Scaling by the accepted mass absorbs roundoff within MASS_TOLERANCE; it does not repair bad models.
     let threshold = draw * mass;
-    let mut cumulative = 0.0;
-    let mut last_positive = None;
-    for (outcome, probability) in &distribution.outcomes {
-        cumulative += probability;
-        if *probability > 0.0 {
-            last_positive = Some(outcome);
-            if threshold < cumulative {
-                return Ok(outcome);
-            }
-        }
-    }
-    // A valid draw can round to mass during multiplication. Never select a
-    // zero-probability final branch as a floating-point boundary fallback.
-    last_positive.ok_or(LearningError::NoPositiveProbability)
+    let first_segment_past_threshold = distribution
+        .outcomes
+        .iter()
+        .scan(0.0, |upper_edge, (outcome, probability)| {
+            *upper_edge += probability;
+            Some((outcome, *probability, *upper_edge))
+        })
+        .filter(|(_, probability, _)| *probability > 0.0)
+        .find(|(_, _, upper_edge)| threshold < *upper_edge)
+        .map(|(outcome, _, _)| outcome);
+    // Roundoff can push `threshold` up to `mass` itself; then the last positive branch owns it.
+    let last_positive_branch = || {
+        distribution
+            .outcomes
+            .iter()
+            .rev()
+            .find(|(_, probability)| *probability > 0.0)
+            .map(|(outcome, _)| outcome)
+    };
+    first_segment_past_threshold
+        .or_else(last_positive_branch)
+        .ok_or(LearningError::NoPositiveProbability)
 }
 
+/// Draw one action from the policy, then one next state from the world, and record the step.
+/// `state ──policy, action_draw──► action ──world, next_state_draw──► next_state`
+/// Invariant: the sampler sees the model; the learner later sees only this Transition.
 pub(super) fn sample_transition(
     policy: &Policy,
     world: &DatingWorld,
@@ -67,8 +77,7 @@ pub(super) fn sample_transition(
     let action = select_outcome(&actions, action_draw)?;
     let next_states = world.possible_next_states(state, action);
     let next_state = select_outcome(&next_states, next_state_draw)?;
-    // These selections borrow local distributions. Copy just the chosen values
-    // into an owned observation that can outlive those temporary distributions.
+    // The selections borrow the local distributions; `*` copies the chosen values out before those drop.
     Ok(Transition {
         from_state: *state,
         action: *action,

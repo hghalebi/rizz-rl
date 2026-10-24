@@ -12,18 +12,9 @@ use crate::probability::Distribution;
 // ============================================================================
 // CHECKPOINT 3 — THE POLICY: HOW THE AGENT BEHAVES
 // ============================================================================
-// A stochastic policy maps a state to a probability distribution over actions:
-//
-//     State ----policy π(a|s)----> Distribution<Action>
-//
-// `boldness` parameterizes the entire policy.
-// Think of it as a dial for a behavior rule, not an action taken on one step.
-// Changing this dial leaves the world's conditional response probabilities alone.
-//
-// Why is `boldness` private?
-//   Outside this file, `Policy { boldness: 1.5 }` does not compile.
-//   The only way to build a Policy is `Policy::try_new`, which checks the range.
-//   So every Policy you receive already has boldness in [0, 1].
+/// A stochastic policy: one dial, `boldness`, sets the action chances in every state.
+/// `State ──π(a|s)──► Distribution<Action>`
+/// Invariant: `boldness` is private, so every `Policy` comes from `try_new` and lies in [0, 1].
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Policy {
     boldness: f64,
@@ -42,11 +33,10 @@ impl fmt::Display for InvalidBoldness {
 impl std::error::Error for InvalidBoldness {}
 
 impl Policy {
-    // Why check at all? An f64 can hold values that make no sense as a dial:
-    //   NaN, infinity, or 1.5.
-    // Example: boldness 1.5 in Playful gives Coffee 0.2 + 0.65 * 1.5 = 1.175.
-    // That leaves 1 - 1.175 = -0.175 for Ask and Tease: a negative probability.
-    // Predict: what does boldness -0.5 do to Tease from Engaged?
+    /// Build a policy, refusing any dial setting that would break the action probabilities.
+    /// `boldness 1.5 in Playful: Coffee = 0.2 + 0.65 · 1.5 = 1.175, leaving -0.175 for the rest`
+    /// Invariant: NaN, infinities, and values outside [0, 1] never become a `Policy`.
+    /// Predict: what does boldness -0.5 do to Tease from Engaged?
     pub(crate) fn try_new(boldness: f64) -> Result<Self, InvalidBoldness> {
         if boldness.is_finite() && (0.0..=1.0).contains(&boldness) {
             Ok(Self { boldness })
@@ -55,12 +45,20 @@ impl Policy {
         }
     }
 
+    /// The dial setting, read-only.
     pub(crate) fn boldness(&self) -> f64 {
         self.boldness
     }
 
+    /// The action chances in one state; boldness never touches the world's response chances.
+    /// ```text
+    /// Engaged:  Tease = 0.15 + 0.35·b (linear),  Coffee = 0.30·b² (quadratic),
+    ///           Ask and Story split what remains 60 : 40
+    /// Playful:  Coffee = 0.20 + 0.65·b,  Ask and Tease split what remains 50 : 50
+    /// ```
+    /// Invariant: each state's chances sum to 1 for every boldness in [0, 1].
+    /// Predict: at boldness 0, how much do Ask and Story share in Engaged?
     pub(crate) fn possible_actions(&self, state: &State) -> Distribution<Action> {
-        // No range check needed here: try_new already guaranteed [0, 1].
         let boldness = self.boldness;
 
         match state {
@@ -69,16 +67,8 @@ impl Policy {
             },
 
             State::Engaged => {
-                // Linear growth: each boldness increment adds the same amount.
                 let tease_probability = 0.15 + 0.35 * boldness;
-
-                // Quadratic growth: Coffee remains low at first, then rises faster.
                 let coffee_probability = 0.30 * boldness * boldness;
-
-                // Ask and Story divide the probability that remains.
-                // A useful budget check: at boldness 0, Tease takes 0.15 and
-                // Coffee takes 0; Ask and Story must share the remaining 0.85.
-                // Predict how raising boldness changes that remaining budget.
                 let remaining_probability = 1.0 - tease_probability - coffee_probability;
 
                 Distribution {

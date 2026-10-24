@@ -63,8 +63,7 @@ impl fmt::Display for CliError {
                 f,
                 "{flag} does not apply to '{command}'; use --help for supported options"
             ),
-            // The configuration message is already complete, so it is shown as is
-            // rather than also being exposed through `Error::source`.
+            // The configuration message is complete on its own, so it is shown as is.
             Self::Config(error) => error.fmt(f),
         }
     }

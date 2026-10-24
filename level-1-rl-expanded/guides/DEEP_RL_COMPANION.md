@@ -608,7 +608,8 @@ E[X] = \sum_x P(x)X(x)
 The program implements:
 
 ```rust
-weighted_sum += probability * value_of(outcome);
+.map(|(outcome, probability)| probability * value_of(outcome))
+.sum()
 ```
 
 ## Expected value is not a guaranteed outcome

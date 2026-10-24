@@ -24,20 +24,21 @@ use std::collections::HashMap;
 use crate::model::{DatingWorld, Policy, State};
 use crate::planning::possible_transitions;
 
+/// The answer of one exact evaluation, plus how much work the cache did.
 pub(super) struct ValueEstimate {
     pub(super) expected_return: f64,
-    /// Distinct nonterminal (state, steps_remaining) subproblems evaluated.
-    /// Zero-horizon and terminal base cases do not count.
+    /// Distinct nonterminal (state, steps_remaining) subproblems evaluated; base cases do not count.
     pub(super) evaluated_states: usize,
 }
 
-// The key is the whole subproblem: the same state with a different number of
-// remaining steps asks a different question, so both parts identify the answer.
+/// Memo table keyed by the whole subproblem.
+/// `(state, steps_remaining) ──► V`
+/// Invariant: the same state with a different number of steps left is a different question.
 type ValueCache = HashMap<(State, usize), f64>;
 
-/// Evaluate a fixed policy with a fresh cache. The caller supplies gamma in [0, 1].
-/// Starting fresh prevents another policy or discount from inheriting these
-/// answers. Recursive calls borrow this one cache instead of copying its entries.
+/// Evaluate a fixed policy from `initial_state` with a fresh cache.
+/// `V(horizon, initial_state)`, computed by `value_for`
+/// Invariant: a fresh cache per call, so another policy or discount cannot inherit answers.
 pub(super) fn evaluate_value(
     policy: &Policy,
     world: &DatingWorld,
@@ -53,6 +54,10 @@ pub(super) fn evaluate_value(
     }
 }
 
+/// The value of what comes after arriving in `state` with `steps_remaining` steps left.
+/// `V(h, s) = Σ p · [r + γ · V(h-1, s')]`,  with  `V(0, s) = V(h, terminal) = 0`
+/// Invariant: each (state, steps) subproblem is computed once; the cache answers every repeat.
+/// Predict: does a zero continuation value also erase the immediate reward?
 fn value_for(
     policy: &Policy,
     world: &DatingWorld,
@@ -61,39 +66,33 @@ fn value_for(
     discount: f64,
     cache: &mut ValueCache,
 ) -> f64 {
-    // This is the value of what comes AFTER arriving here. The caller still
-    // counts the arriving reward. Horizon zero ends this finite objective,
-    // even if the environment state itself is not terminal.
     if steps_remaining == 0 || state.is_terminal() {
         return 0.0;
     }
 
     let key = (*state, steps_remaining);
     if let Some(&cached) = cache.get(&key) {
-        // An f64 is Copy: return the answer without taking its entry out of storage.
         return cached;
     }
 
-    let mut expected_return = 0.0;
-    for (transition, probability) in possible_transitions(policy, world, state).outcomes {
-        if probability == 0.0 {
-            continue;
-        }
-        let future_value = value_for(
-            policy,
-            world,
-            &transition.to_state,
-            steps_remaining - 1,
-            discount,
-            cache,
-        );
-        // First score the branch, then weight how likely it is. A hypothetical
-        // reward 2 plus discounted future 0.5*4 gives 4; chance 0.25 contributes 1.
-        // Predict: does zero continuation value also erase the immediate reward?
-        expected_return += probability * (transition.reward + discount * future_value);
-    }
+    let expected_return = possible_transitions(policy, world, state)
+        .outcomes
+        .into_iter()
+        .filter(|(_, probability)| *probability != 0.0)
+        .map(|(transition, probability)| {
+            // `map` takes `FnMut`, so this closure may reborrow `cache` mutably on every call.
+            let future_value = value_for(
+                policy,
+                world,
+                &transition.to_state,
+                steps_remaining - 1,
+                discount,
+                cache,
+            );
+            probability * (transition.reward + discount * future_value)
+        })
+        .sum();
 
-    // The key holds a copy of the state, so the cache does not borrow from the caller.
     cache.insert(key, expected_return);
     expected_return
 }

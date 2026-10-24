@@ -7,11 +7,13 @@
 use std::io::{self, Write};
 
 use crate::model::{Action, State, Transition};
-use crate::planning::{discounted_return, Trajectory};
+use crate::planning::{discount_weights, discounted_return, Trajectory};
 
+/// Print one row per supplied reward, then the discounted return of the whole sequence.
+/// `contribution = weight · reward`, with the weights from `discount_weights`
+/// Invariant: the rows and the final `G` use the same weight sequence as the planner does.
 pub(super) fn print(out: &mut impl Write, discount: f64) -> io::Result<()> {
-    // This synthetic trace isolates arithmetic. Its rewards are supplied by
-    // the exercise rather than obtained by calling DatingWorld::reward_for.
+    // The rewards are supplied by the exercise, not produced by `DatingWorld::reward_for`.
     let trajectory: Trajectory = [1.0, 2.0, 4.0]
         .into_iter()
         .map(|reward| Transition {
@@ -27,15 +29,13 @@ pub(super) fn print(out: &mut impl Write, discount: f64) -> io::Result<()> {
     )?;
     writeln!(out, "G = r_0 + discount*r_1 + discount^2*r_2")?;
     writeln!(out, "step   reward     weight   contribution")?;
-    let mut weight = 1.0;
-    for (step, transition) in trajectory.iter().enumerate() {
+    for (step, (weight, transition)) in discount_weights(discount).zip(&trajectory).enumerate() {
         writeln!(
             out,
             "{step:>4}   {:>6.2}   {weight:>8.4}   {:>12.4}",
             transition.reward,
             weight * transition.reward
         )?;
-        weight *= discount;
     }
     writeln!(
         out,

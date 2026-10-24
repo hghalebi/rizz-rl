@@ -8,10 +8,33 @@ When clarity for a learner conflicts with brevity or production polish, choose c
 
 1. Find the guide task that points at the code. Most are `**Read:**` lines in the [learning path](level-1-rl-expanded/guides/LEARNING_PATH.md).
 2. Keep whatever that task asks the learner to find.
-   - Session 2 asks which kind of weight "each loop" uses, so `discounted_return` and `expected_value` stay explicit loops.
-   - Session 5 asks for "the `Option` representing an empty candidate set", so `best_policy` keeps its visible `Option`.
-3. Keep teaching comments. When code changes, update the comment that explains it.
-4. Write new comments the same way: a question, one idea per line, a small worked example, then a `Predict:` prompt.
+   - Session 2 asks for the weight sequence `1, γ, γ², ...` from `discount_weights`, and which kind of weight each function uses.
+   - Session 5 asks why `reduce` returns an `Option` in `best_policy`.
+3. Keep teaching comments. When code changes, update the card that explains it.
+4. Write every new comment as a card (see below), never as a paragraph.
+
+## Code shape
+
+- A function that computes a value (a sum, a map, a selection, a repeated expansion) is an iterator pipeline that reads like its formula: `map`, `flat_map`, `filter`, `zip`, `fold`, `reduce`, `sum`, `collect`.
+- A loop stays only where it performs effects in order: writing output rows, drawing random numbers, breaking early at a terminal state. Even then it iterates over a pipeline.
+- Destructure tuples with full names, `(outcome, probability)`, never `.0` or `.1`; destructure newtypes, `let Discount(discount) = ..`.
+- Empty `f64` sums: `sum()` of an empty iterator is `-0.0`, which prints as `-0.000000`. Use `fold(0.0, ..)` where the input can be empty, as `discounted_return` does.
+- Exception, on purpose: `src/exercises/` is where learners write loops by hand. Leave its loops alone.
+
+## Comment card
+
+Above every function, method, struct, and enum, as `///`:
+
+```rust
+/// <concept: what it computes, one line>
+/// <formula or diagram, one line in backticks; longer diagrams go in a ```text fence>
+/// <invariant: what stays true, one line>
+/// Predict: <one prompt, only where the method had one>
+```
+
+- Domain meaning lives in `///` cards and `//!` file headers. Rust mechanics (ownership, `move`, `*` through a borrow, `FnMut`) get one inline `//` line, only where a learner would stall.
+- Arrow style: `T @ p ──f──► U @ p`. The `// CHECKPOINT N` banners stay as anchors.
+- Long explanations belong in `guides/DEEP_RL_COMPANION.md`, not in the code.
 
 ## Keep the teaching shape
 

@@ -7,16 +7,12 @@
 use super::{Action, DatingWorld, State};
 
 impl DatingWorld {
-    // Reward R(s, a, s') defines the objective the algorithm actually optimizes.
-    // Probability answers "how likely?"; reward answers "how valuable?".
-    // Here Coffee from Engaged has expected immediate reward
-    // 0.15 * 8 + 0.85 * (-8) = -5.6, despite a positive best-case outcome.
-    // Match order matters: specific penalties precede the broader reward rules.
+    /// The reward for one step: how valuable it was, given where it started and where it landed.
+    /// `R(s, a, s')`;  Coffee from Engaged averages `0.15 · 8 + 0.85 · (-8) = -5.6`
+    /// Invariant: arms go from most specific to broadest, so a penalty wins over a general reward.
     pub(crate) fn reward_for(&self, state: &State, action: &Action, next_state: &State) -> f64 {
         match (state, action, next_state) {
-            // The current policy never chooses Coffee from LowInterest.
-            // This defensive rule shows that a reward model may still define
-            // the cost of off-policy or externally supplied actions.
+            // Off-policy guard: the policy never picks Coffee from LowInterest, but the reward model still prices it.
             (State::LowInterest, Action::Coffee, _) => -12.0,
 
             (State::Engaged, Action::Coffee, State::LowInterest) => -8.0,

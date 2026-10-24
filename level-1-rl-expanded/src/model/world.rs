@@ -12,17 +12,16 @@ use crate::probability::Distribution;
 // ============================================================================
 // CHECKPOINT 4 — THE WORLD MODEL: HOW CONSEQUENCES HAPPEN
 // ============================================================================
-// The policy controls action probabilities.
-// The world controls consequence probabilities.
-//
-//     (State, Action) ----P(s'|s,a)----> Distribution<NextState>
-// For example, an Ask from JustMet reaches Engaged with probability 0.80.
-// That is conditional on having chosen Ask; the policy's chance of choosing
-// Ask is applied later, when `planning::possible_transitions` joins the stages.
+/// The world's side of one step: which next states an action can lead to, and how likely each is.
+/// `(State, Action) ──P(s'|s,a)──► Distribution<State>`
+/// Invariant: these chances are conditional on the action; `possible_transitions` multiplies in π(a|s).
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct DatingWorld;
 
 impl DatingWorld {
+    /// The possible next states after taking `action` in `state`.
+    /// `JustMet ──Ask──► Engaged @ 0.80 | LowInterest @ 0.20`
+    /// Invariant: each arm sums to 1; an unsupported pair keeps the state, a teaching shortcut.
     pub(crate) fn possible_next_states(
         &self,
         state: &State,
@@ -93,9 +92,7 @@ impl DatingWorld {
 
             (_, Action::Space | Action::Goodbye) => Distribution::certain(State::Goodbye),
 
-            // Pedagogical fallback: unsupported actions leave the state unchanged.
-            // A stricter production model should return an error or make illegal
-            // state/action combinations impossible to construct.
+            // Teaching fallback: an unsupported action leaves the state unchanged. A stricter model would refuse it.
             (state, _) => Distribution::certain(*state),
         }
     }

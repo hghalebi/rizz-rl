@@ -18,7 +18,7 @@ mod search;
 mod transitions;
 
 pub(crate) use evaluation::expected_return_of;
-pub(crate) use returns::discounted_return;
+pub(crate) use returns::{discount_weights, discounted_return};
 pub(crate) use rollout::{enumerate_trajectories, Trajectory};
 #[cfg(test)]
 pub(crate) use search::find_best_policy;

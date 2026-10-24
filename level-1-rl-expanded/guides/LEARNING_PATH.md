@@ -51,12 +51,12 @@ cargo run -- returns --discount 0.5
 cargo run -- returns --discount 1
 ```
 
-**Read:** [`discounted_return`](../src/planning/returns.rs) and [`expected_value`](../src/probability/expectation.rs). Identify the loop's evolving weight and the borrowed input to `Fn(&T) -> f64`.
+**Read:** [`discounted_return`](../src/planning/returns.rs) and [`expected_value`](../src/probability/expectation.rs). Identify the weight sequence `1, γ, γ², ...` that `discount_weights` produces, and the borrowed input to `Fn(&T) -> f64`.
 
 <details>
 <summary>Conceptual hint</summary>
 
-Time weights act inside one path. Probability weights compare alternative paths. Identify which kind of weight each loop uses.
+Time weights act inside one path. Probability weights compare alternative paths. Identify which kind of weight each function uses.
 
 </details>
 
@@ -143,7 +143,7 @@ cargo run -- evaluate --boldness 0.3 --horizon 5 --discount 0.95
 cargo run -- evaluate --boldness 1 --horizon 5 --discount 0.95
 ```
 
-**Read:** [`evaluate_policy_grid` and `best_policy`](../src/planning/search.rs), then [`Policy::possible_actions`](../src/model/policy.rs). Find the `Option` representing an empty candidate set.
+**Read:** [`evaluate_policy_grid` and `best_policy`](../src/planning/search.rs), then [`Policy::possible_actions`](../src/model/policy.rs). Explain why `reduce` returns an `Option`, and what it returns for an empty grid.
 
 <details>
 <summary>Conceptual hint</summary>

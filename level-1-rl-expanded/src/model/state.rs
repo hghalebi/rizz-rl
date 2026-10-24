@@ -7,12 +7,9 @@
 // ============================================================================
 // CHECKPOINT 2 — STATES AND ACTIONS
 // ============================================================================
-// State  = the situation the agent currently believes it is in.
-// Action = a choice available to the agent.
-// Our Markov assumption is that this state contains all the history needed to
-// predict the next response given an action. A real task might need a richer state.
-// Rust's enum gives these named cases a type, so a match can cover every variant.
-// The variants carry no data, so `Copy` makes passing a state as cheap as an integer.
+/// The situation the agent believes it is in: all the history needed to predict the next response.
+/// `State ──policy──► Action ──world──► next State`
+/// Invariant: the variants carry no data, so `Copy` makes passing a state as cheap as an integer.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum State {
     JustMet,
@@ -24,7 +21,7 @@ pub(crate) enum State {
 }
 
 impl State {
-    // One list of every state keeps tables and exhaustive checks in sync with the enum.
+    /// Every state in one place, so tables and exhaustive checks stay in sync with the enum.
     pub(crate) const ALL: [Self; 6] = [
         Self::JustMet,
         Self::Engaged,
@@ -34,14 +31,15 @@ impl State {
         Self::Goodbye,
     ];
 
-    // A terminal state ends the meaningful interaction.
-    // MutualInterest still has a final Goodbye transition in this model.
-    // The reward for arriving at Goodbye can count even though no future follows.
+    /// Whether the meaningful interaction has ended.
+    /// `Goodbye ─► terminal`; MutualInterest still has one final Goodbye transition
+    /// Invariant: the reward for arriving at Goodbye counts even though no future follows it.
     pub(crate) fn is_terminal(&self) -> bool {
         matches!(self, Self::Goodbye)
     }
 }
 
+/// A choice available to the agent.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum Action {
     Ask,

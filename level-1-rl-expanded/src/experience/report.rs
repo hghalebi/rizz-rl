@@ -13,26 +13,26 @@ use super::LearningError;
 use crate::model::{DatingWorld, State};
 use crate::values::evaluate_value;
 
-/// The finished learn-value experiment. `run` does all of the computation;
-/// `Display` only formats these numbers for the lesson.
+/// The finished learn-value experiment: `run` computes it, `Display` formats it.
 pub(crate) struct LearningReport {
     config: LearningConfig,
     exact: f64,
     table: ValueTable,
 }
 
+/// Train on sampled episodes, then compute the exact value of the same toy setting beside it.
+/// `learned = table.value(JustMet, h)`,  `exact = evaluate_value(JustMet, h).expected_return`
+/// Invariant: the learner never sees the exact value; agreement says nothing about the model's realism.
+/// Predict: what might one lucky seed conceal?
 pub(crate) fn run(config: &LearningConfig) -> Result<LearningReport, LearningError> {
     let table = train(config)?;
-    // Only comparison code sees exact values; neither the sampler nor the
-    // learner is initialized from, or updated using, these reference answers.
-    // This checks learning against the same toy model, not whether the model
-    // describes real interactions. Predict: what might one lucky seed conceal?
+    let Discount(discount) = config.discount;
     let exact = evaluate_value(
         &config.policy,
         &DatingWorld,
         &State::JustMet,
         config.horizon,
-        config.discount.0,
+        discount,
     )
     .expected_return;
     Ok(LearningReport {
@@ -43,6 +43,7 @@ pub(crate) fn run(config: &LearningConfig) -> Result<LearningReport, LearningErr
 }
 
 impl fmt::Display for LearningReport {
+    /// Print the summary lines, one row per (h, nonterminal state), then the caveats.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let LearningConfig {
             policy,

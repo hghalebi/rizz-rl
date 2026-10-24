@@ -11,21 +11,24 @@ use super::LearningError;
 use crate::model::{State, Transition};
 use crate::MAX_HORIZON;
 
-// Engaged with one step left and Engaged with five steps left ask different
-// questions. Both the estimate and its observation count belong to (h, state),
-// which is why the table is keyed by the pair rather than by the state alone.
+/// One estimate and how many observations have shaped it so far.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct ValueEntry {
     pub(super) value: f64,
     pub(super) visits: usize,
 }
 
+/// Estimates keyed by the whole question: which state, and how many steps are left.
+/// `(state, steps_remaining) ──► ValueEntry`
+/// Invariant: Engaged with one step left and Engaged with five are two separate entries.
 #[derive(Debug, PartialEq)]
 pub(super) struct ValueTable {
     discount: Discount,
     pub(super) entries: HashMap<(State, usize), ValueEntry>,
 }
 
+/// Every number from one TD(0) update, kept so a lesson can print the arithmetic.
+/// `target = reward + γ · bootstrap`,  `value = previous + alpha · (target - previous)`
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct Update {
     pub(super) previous: f64,
@@ -37,6 +40,7 @@ pub(super) struct Update {
 }
 
 impl ValueTable {
+    /// An empty table: every estimate starts at 0 with 0 visits.
     pub(super) fn new(discount: Discount) -> Self {
         Self {
             discount,
@@ -44,23 +48,25 @@ impl ValueTable {
         }
     }
 
+    /// The stored entry for (state, steps remaining), if that entry was ever visited.
     pub(super) fn entry(&self, state: &State, steps_remaining: usize) -> Option<&ValueEntry> {
         self.entries.get(&(*state, steps_remaining))
     }
 
+    /// The current estimate for (state, steps remaining).
+    /// `V(0, s) = V(h, terminal) = 0`; otherwise the stored value, or the initial 0 if unvisited
+    /// Invariant: an unvisited 0 is the declared starting point, not evidence of learning.
     pub(super) fn value(&self, state: &State, steps_remaining: usize) -> f64 {
         if steps_remaining == 0 || state.is_terminal() {
             return 0.0;
         }
-        // Zero is the declared initial estimate, not evidence of having learned.
         self.entry(state, steps_remaining)
             .map_or(0.0, |entry| entry.value)
     }
 
-    /// Move this entry toward a one-transition target, not a full episode return.
-    /// A prediction of 4 with target 10 on its fourth visit becomes
-    /// 4 + (1/4)*(10 - 4) = 5.5. Other entries keep their own counts.
-    /// The table is borrowed mutably; the observation is only read, not rewritten.
+    /// Move one entry toward a one-transition target, using that entry's own visit count.
+    /// `target = r + γ · V(h-1, s')`,  `alpha = 1 / visits`,  `value' = value + alpha · (target - value)`
+    /// Invariant: every check runs before the single write, so a refused update changes nothing.
     /// Predict: is the first visit to a different entry also its fourth update?
     pub(super) fn observe(
         &mut self,
@@ -76,25 +82,20 @@ impl ValueTable {
         if !observation.reward.is_finite() {
             return Err(LearningError::NonFiniteReward);
         }
+        let Discount(discount) = self.discount;
         let bootstrap = self.value(&observation.to_state, steps_remaining - 1);
-        // In the supplied trace, reward 1 plus 0.5 * an estimated next value of 4
-        // gives target 3. That next value is today's estimate, not a known future.
-        let target = observation.reward + self.discount.0 * bootstrap;
+        let target = observation.reward + discount * bootstrap;
         let previous = self.value(&observation.from_state, steps_remaining);
         let visits = self
             .entry(&observation.from_state, steps_remaining)
             .map_or(0, |entry| entry.visits)
             .checked_add(1)
             .ok_or(LearningError::VisitCountOverflow)?;
-        // This count belongs to one (h, state), not to the whole training run.
-        // With 1/n steps, this entry averages the targets it has seen. Those
-        // targets contain changing estimates, not complete observed returns.
         let alpha = 1.0 / visits as f64;
         let value = previous + alpha * (target - previous);
         if !target.is_finite() || !value.is_finite() {
             return Err(LearningError::NonFiniteUpdate);
         }
-        // Every check has passed, so this single write is the only mutation.
         self.entries.insert(
             (observation.from_state, steps_remaining),
             ValueEntry { value, visits },

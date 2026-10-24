@@ -10,16 +10,17 @@ use super::possible_transitions;
 use crate::model::{DatingWorld, Policy, State, Transition};
 use crate::probability::Distribution;
 
-// A trajectory is one complete possible history.
+/// One complete possible history: its transitions, in the order they happened.
 pub(crate) type Trajectory = Vec<Transition>;
 
-// During tree expansion, each leaf needs its current state and its history.
+/// A leaf of the growing tree: where this history is now, and how it got there.
 #[derive(Clone, Debug)]
 struct ConversationPath {
     current_state: State,
     trajectory_so_far: Trajectory,
 }
 
+/// The tree before any step: one empty history with probability 1.
 fn start_from(initial_state: &State) -> Distribution<ConversationPath> {
     Distribution::certain(ConversationPath {
         current_state: *initial_state,
@@ -27,15 +28,18 @@ fn start_from(initial_state: &State) -> Distribution<ConversationPath> {
     })
 }
 
-// Extend one leaf into all of its possible next leaves.
+/// Replace one leaf by all of its possible next leaves.
+/// ```text
+/// shared past ──┬── shared past + transition A   @ p_A
+///               └── shared past + transition B   @ p_B
+/// ```
+/// Invariant: a history that has reached Goodbye is kept as it is, its final reward included.
+/// Predict: must the other, still-active histories stop at the same time?
 fn extend_one_step(
     policy: &Policy,
     world: &DatingWorld,
     path: ConversationPath,
 ) -> Distribution<ConversationPath> {
-    // The reward for arriving at Goodbye is already in this history. Keeping
-    // the stopped path preserves that reward and adds no further transitions.
-    // Predict: must the other, still-active histories stop at the same time?
     if path.current_state.is_terminal() {
         return Distribution::certain(path);
     }
@@ -46,8 +50,7 @@ fn extend_one_step(
     possible_transitions(policy, world, &current_state).map(|transition| {
         let next_state = transition.to_state;
 
-        // Moving the history into one child would leave none for the others.
-        // Each branch copies the common past, then appends its own transition.
+        // Each branch clones the shared past; moving it into one child would leave none for the others.
         let mut extended_trajectory = trajectory_so_far.clone();
         extended_trajectory.push(transition);
 
@@ -61,30 +64,27 @@ fn extend_one_step(
 // ============================================================================
 // CHECKPOINT 6 — ROLLOUT: GROW THE COMPLETE FUTURE TREE
 // ============================================================================
-// Horizon = how many interaction steps we inspect.
-//
-// This is exact enumeration, not Monte Carlo sampling.
-// At horizon zero, the one empty history represents "nothing has happened yet".
-// Consuming each layer lets and_then replace it with all its owned continuations.
+/// Grow the complete tree of histories, one layer per step: exact enumeration, not sampling.
+/// `layer₀ = {empty history @ 1}`,  `layerₕ = layerₕ₋₁.and_then(extend_one_step)`
+/// Invariant: every layer still has total probability 1; branching only redistributes it.
 pub(crate) fn enumerate_trajectories(
     policy: &Policy,
     world: &DatingWorld,
     initial_state: &State,
     horizon: usize,
 ) -> Distribution<Trajectory> {
-    let mut possible_paths = start_from(initial_state);
+    (1..=horizon)
+        .fold(start_from(initial_state), |possible_paths, step_number| {
+            let _step_span = debug_span!("expand_future_tree", step = step_number).entered();
 
-    for step_number in 1..=horizon {
-        let _step_span = debug_span!("expand_future_tree", step = step_number).entered();
+            let expanded = possible_paths.and_then(|path| extend_one_step(policy, world, path));
 
-        possible_paths = possible_paths.and_then(|path| extend_one_step(policy, world, path));
-
-        debug!(
-            number_of_paths = possible_paths.number_of_outcomes(),
-            probability_mass = possible_paths.total_probability(),
-            "one rollout layer completed"
-        );
-    }
-
-    possible_paths.map(|path| path.trajectory_so_far)
+            debug!(
+                number_of_paths = expanded.number_of_outcomes(),
+                probability_mass = expanded.total_probability(),
+                "one rollout layer completed"
+            );
+            expanded
+        })
+        .map(|path| path.trajectory_so_far)
 }

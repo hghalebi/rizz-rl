@@ -20,6 +20,7 @@ pub(super) enum CommandName {
 }
 
 impl CommandName {
+    /// Every command name, in help order.
     pub(super) const ALL: [Self; 7] = [
         Self::FirstStep,
         Self::Returns,
@@ -30,6 +31,7 @@ impl CommandName {
         Self::TdTrace,
     ];
 
+    /// The spelling a user types.
     pub(super) fn as_str(self) -> &'static str {
         match self {
             Self::FirstStep => "first-step",
@@ -42,8 +44,8 @@ impl CommandName {
         }
     }
 
-    // The same applicability table as HELP. An exhaustive match means a new
-    // flag cannot be added without deciding which commands accept it.
+    /// Which flags this command accepts: the same table as `HELP`, enforced.
+    /// Invariant: the match is exhaustive, so a new flag must decide which commands accept it.
     pub(super) fn accepts(self, flag: Flag) -> bool {
         match flag {
             Flag::Boldness => matches!(self, Self::Evaluate | Self::Compare | Self::LearnValue),
@@ -61,6 +63,7 @@ impl CommandName {
 impl FromStr for CommandName {
     type Err = CliError;
 
+    /// Match the typed word against every command's spelling.
     fn from_str(name: &str) -> Result<Self, Self::Err> {
         Self::ALL
             .into_iter()

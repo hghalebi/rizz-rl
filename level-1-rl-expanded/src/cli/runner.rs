@@ -32,6 +32,9 @@ impl From<io::Error> for RunError {
     }
 }
 
+/// Parse the arguments, run the command, and turn the outcome into an exit code.
+/// `usage error ─► 2`,  `refused learning step ─► 2`,  `closed pipe ─► 0`,  `other write error ─► 1`
+/// Invariant: an error prints one line on stderr and nothing on stdout.
 pub(crate) fn run() -> ExitCode {
     let options = match parse(std::env::args().skip(1)) {
         Ok(options) => options,
@@ -40,9 +43,7 @@ pub(crate) fn run() -> ExitCode {
     init_tracing(options.verbose);
     match execute(options.command, &mut io::stdout().lock()) {
         Ok(()) => ExitCode::SUCCESS,
-        // A reader such as `head` may close the pipe once it has the lines it
-        // wants. That is the reader's choice, not a lesson failure, so stop
-        // quietly, as Unix command-line tools conventionally do.
+        // A reader such as `head` may close the pipe early; that is its choice, not a lesson failure.
         Err(RunError::Output(error)) if error.kind() == io::ErrorKind::BrokenPipe => {
             ExitCode::SUCCESS
         }
@@ -54,18 +55,14 @@ pub(crate) fn run() -> ExitCode {
     }
 }
 
-// Usage mistakes and refused learning steps share one channel: a message on
-// stderr, nothing on stdout, and exit code 2.
+/// Report a usage mistake or a refused learning step: one line on stderr, exit code 2.
 fn fail(error: impl fmt::Display) -> ExitCode {
     eprintln!("Error: {error}");
     ExitCode::from(2)
 }
 
-// Why write to `out` instead of calling `println!`?
-//   `println!` panics if stdout is closed.
-//   Example: `cargo run -- sweep | head -3` closes stdout after three lines.
-//   Writing to `out` turns that into an ordinary error that `run` handles.
-//   Tests can also pass their own writer and inspect what happened.
+/// Write the chosen command's lesson to `out`, then flush.
+/// Invariant: output goes through a writer, never `println!`, so a closed stdout is an error, not a panic.
 pub(super) fn execute(command: Command, out: &mut impl Write) -> Result<(), RunError> {
     if command.plans_exactly() {
         writeln!(out, "Exact finite-horizon planning with a known model.\n")?;
@@ -85,9 +82,8 @@ pub(super) fn execute(command: Command, out: &mut impl Write) -> Result<(), RunE
     Ok(())
 }
 
+/// Send diagnostics to stderr, so `--verbose` explains a result without changing it.
 fn init_tracing(verbose: bool) {
-    // Keep the experiment's answer on stdout and its detailed working on stderr.
-    // Turning on diagnostics should help explain a result without changing it.
     tracing_subscriber::fmt()
         .with_max_level(if verbose { Level::DEBUG } else { Level::WARN })
         .with_target(false)

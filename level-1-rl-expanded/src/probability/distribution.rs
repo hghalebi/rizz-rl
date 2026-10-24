@@ -9,41 +9,35 @@
 // ============================================================================
 // CHECKPOINT 1 — REPRESENTING UNCERTAINTY
 // ============================================================================
-// Distribution<T> means:
-//
-//     possible values of T
-//     +
-//     the probability of each value
-//
-// Example:
-//
-// Distribution<State>
-// ├── Playful     @ 0.55
-// ├── Engaged     @ 0.25
-// └── LowInterest @ 0.20
-//
-// A row represents a branch, so two rows may contain the same value. This small
-// teaching type does not validate its weights: callers must supply finite,
-// nonnegative probabilities whose total is one before interpreting them as such.
+/// Several possible values of `T`, each paired with its probability.
+/// ```text
+/// Distribution<State>
+/// ├── Playful     @ 0.55
+/// ├── Engaged     @ 0.25
+/// └── LowInterest @ 0.20
+/// ```
+/// Invariant: callers supply finite, nonnegative weights that sum to 1; this type does not check.
 #[derive(Debug, Clone)]
 pub(crate) struct Distribution<T> {
+    /// One row per branch, so two rows may hold the same value.
     pub(crate) outcomes: Vec<(T, f64)>,
 }
 
 impl<T> Distribution<T> {
-    // One certain value is represented as one branch with probability 1.0.
+    /// One certain value: a single branch with probability 1.
     pub(crate) fn certain(value: T) -> Self {
         Self {
             outcomes: vec![(value, 1.0)],
         }
     }
 
-    // Count represented branches, not distinct values or observed samples.
+    /// How many branches are represented, not how many distinct values.
     pub(crate) fn number_of_outcomes(&self) -> usize {
         self.outcomes.len()
     }
 
-    // Probability mass should remain approximately 1.0 as the tree branches.
+    /// The total probability mass, which should stay close to 1 as the tree branches.
+    /// `Σ probability`
     pub(crate) fn total_probability(&self) -> f64 {
         self.outcomes
             .iter()
@@ -53,9 +47,9 @@ impl<T> Distribution<T> {
 }
 
 impl<T: PartialEq> Distribution<T> {
-    // Different branches can produce the same value. Sum all such branches.
-    // For example, Ask and Story can both reach Engaged. Those alternative paths
-    // contribute to one event; equality (`PartialEq`) tells us which rows belong.
+    /// The probability of one event, summed over every branch that produces it.
+    /// `P(target) = Σ probability  over rows where value == target`
+    /// Invariant: Ask and Story can both reach Engaged; equality decides which rows belong.
     pub(crate) fn probability_of(&self, target: &T) -> f64 {
         self.outcomes
             .iter()

@@ -85,15 +85,18 @@ The complete local check is:
 python3 scripts/check.py
 ```
 
-It requires Python 3.9 or later, Rust, Cargo, rustfmt, and Clippy. It checks formatting, strict Clippy, locked tests, documentation links and anchors, documented lesson commands, and exercise selectors. It reports unfinished starter tasks separately from reference failures. The GitHub Actions workflow uses the same script; a local success does not establish that hosted CI ran.
+It requires Python 3.9 or later, Rust, Cargo, rustfmt, and Clippy. It checks formatting, strict Clippy, rustdoc on every private item, locked tests, documentation links and anchors, documented lesson commands, and exercise selectors. It reports unfinished starter tasks separately from reference failures. The GitHub Actions workflow uses the same script; a local success does not establish that hosted CI ran.
 
 The underlying Rust checks are:
 
 ```bash
 cargo fmt --all -- --check
 cargo clippy --locked --all-targets -- -D warnings
+RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps --document-private-items
 cargo test --locked --all-targets
 ```
+
+`cargo doc --document-private-items` also builds a browsable copy of every lesson file's comments under `target/doc`.
 
 Tests cover exact evaluator agreement, probability and terminal behavior, sampled TD mechanics, composition, CLI errors, the boldness range enforced by `Policy::try_new`, output to a closed pipe, and a compile-fail ownership fixture. They establish behavior for the covered cases. Learner understanding and retention require actual attempts recorded in the [learning record](guides/LEARNING_RECORD.md).
 

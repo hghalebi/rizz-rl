@@ -12,25 +12,14 @@ use crate::model::{DatingWorld, State, Transition};
 use crate::planning::possible_transitions;
 use crate::probability::{expected_value, Distribution};
 
-// A concrete one-step worked example.
-//
-// From JustMet:
-//
-//     P(Ask)   = 0.70
-//     P(Story) = 0.30
-//
-// The world then branches conditionally:
-//
-//     P(Engaged | Ask)      = 0.80
-//     P(LowInterest | Ask)  = 0.20
-//     P(Engaged | Story)    = 0.60
-//     P(LowInterest | Story)= 0.40
-//
-// `and_then` combines them into joint path probabilities:
-//
-//     P(Ask and Engaged) = 0.70 × 0.80 = 0.56
-//
-// This function prints the same calculation from the real program data.
+/// Print every first-step branch from JustMet with its joint chance, then the total mass.
+/// ```text
+/// JustMet ──Ask   0.70──┬── Engaged     | Ask    0.80  ─► 0.56
+///                       └── LowInterest | Ask    0.20  ─► 0.14
+///         ──Story 0.30──┬── Engaged     | Story  0.60  ─► 0.18
+///                       └── LowInterest | Story  0.40  ─► 0.12
+/// ```
+/// Invariant: `P(action and next_state) = P(action | state) · P(next_state | state, action)`.
 fn print_first_step_walkthrough(
     out: &mut impl Write,
     transitions: &Distribution<Transition>,
@@ -72,6 +61,9 @@ P(action | state) * P(next_state | state, action)
     Ok(())
 }
 
+/// The first-step experiment: the branch table, then the expected immediate reward.
+/// `E[r] = Σ P(branch) · reward(branch) = 0.22`, at every boldness
+/// Invariant: JustMet's action chances are fixed at Ask 0.7 and Story 0.3, so boldness cannot move them.
 pub(super) fn print(out: &mut impl Write, world: &DatingWorld) -> io::Result<()> {
     let policy = default_policy();
     let transitions = possible_transitions(&policy, world, &State::JustMet);
