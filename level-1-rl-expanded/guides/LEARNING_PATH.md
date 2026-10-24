@@ -33,7 +33,7 @@ Here is the local model at `JustMet`. Each response probability is conditional o
 | Ask | 0.70 | 0.80 | 0.20 |
 | Story | 0.30 | 0.60 | 0.40 |
 
-These numbers come from the `JustMet` arm in `Policy::possible_actions` and the `(JustMet, Ask)` / `(JustMet, Story)` arms in [`model.rs`](../src/model.rs).
+These numbers come from the `JustMet` arm in [`Policy::possible_actions`](../src/model/policy.rs) and the `(JustMet, Ask)` / `(JustMet, Story)` arms in [`DatingWorld::possible_next_states`](../src/model/world.rs).
 
 **1. Predict:** what is the probability of the complete path `JustMet -> Ask -> Engaged`?
 
@@ -52,7 +52,13 @@ cargo run -- first-step
 
 A complete path needs both its action and its conditional response. This does not assume the response is independent of the action. Different paths reaching the same event contribute separately to its total probability.
 
-After your attempt, compare the [worked one-step calculation](DEEP_RL_COMPANION.md#36-a-complete-one-step-calculation). For the implementation, follow [`possible_transitions`](../src/planning.rs) into [`Distribution::and_then`](../src/probability.rs). `State` and `Action` are enum alternatives; a `Vec<(T, f64)>` holds weighted branches. [Exercise 4](EXERCISES.md#4-probability-validation) is optional practice in validating those weights.
+After your attempt, compare the [worked one-step calculation](DEEP_RL_COMPANION.md#36-a-complete-one-step-calculation). For the implementation, follow [`possible_transitions`](../src/planning/transitions.rs) into [`Distribution::and_then`](../src/probability/composition.rs). `State` and `Action` are enum alternatives; a `Vec<(T, f64)>` holds weighted branches. [Exercise 4](EXERCISES.md#4-probability-validation) is optional practice in validating those weights.
+
+The same claim exists as a test: it asserts the two path probabilities 0.56 and 0.12. Open [`first_step_joint_probabilities_match_the_hand_calculation`](../src/tests.rs), predict each number it asserts, then run:
+
+```bash
+cargo test tests::first_step_joint_probabilities_match_the_hand_calculation -- --exact
+```
 
 </details>
 
@@ -95,7 +101,13 @@ After your attempt, compare `discounted_return` in the [separate solutions](../s
 cargo run -- returns --discount 0.5
 ```
 
-The production version in [`planning.rs`](../src/planning.rs) borrows a trajectory instead of a reward slice. Both score rewards across time. The [return reference](DEEP_RL_COMPANION.md#33-discounted-return) adds the notation.
+The production version, [`discounted_return`](../src/planning/returns.rs), borrows a trajectory instead of a reward slice and takes its weights `1, γ, γ², ...` from `discount_weights`. Both score rewards across time. The [return reference](DEEP_RL_COMPANION.md#33-discounted-return) adds the notation.
+
+A test shows those weights at work: the same supplied history is worth 0 with one step counted but 2.5 with two. Open [`the_greedy_action_can_depend_on_remaining_horizon`](../src/values/tests.rs), predict each number it asserts, then run:
+
+```bash
+cargo test values::tests::the_greedy_action_can_depend_on_remaining_horizon -- --exact
+```
 
 </details>
 
@@ -127,7 +139,7 @@ cargo test \
 
 Keep time weights inside a path and probability weights across alternatives. For an empty input, the exercise's weighted sum is zero; this does not make an empty list a valid probability distribution.
 
-Use the [exercise-2 card](EXERCISES.md#2-weighted-expectation) for help, then compare the matching [separate solution](../src/exercises/arithmetic/solutions.rs) after an attempt. [`expected_value`](../src/probability.rs) generalizes the same idea with `Fn(&T) -> f64`: the scoring function borrows each outcome. The [expectation reference](DEEP_RL_COMPANION.md#8-expected-value-collapse-uncertainty-into-one-comparison-number) connects this to policy evaluation.
+Use the [exercise-2 card](EXERCISES.md#2-weighted-expectation) for help, then compare the matching [separate solution](../src/exercises/arithmetic/solutions.rs) after an attempt. [`expected_value`](../src/probability/expectation.rs) generalizes the same idea with `Fn(&T) -> f64`: the scoring function borrows each outcome. The [expectation reference](DEEP_RL_COMPANION.md#8-expected-value-collapse-uncertainty-into-one-comparison-number) connects this to policy evaluation.
 
 </details>
 
@@ -160,7 +172,13 @@ Predict one-step behavior, then run:
 cargo run -- evaluate --horizon 1
 ```
 
-A longer horizon can include penalties as well as rewards. It need not improve the score. [`State::is_terminal`](../src/model.rs) defines the task ending; [`extend_one_step`](../src/planning.rs) preserves terminal histories. For Rust practice, identify the consumed path, borrowed model, and cloned histories needed for separate branches. The [terminal-state reference](DEEP_RL_COMPANION.md#23-terminal-and-absorbing-states) expands the distinction.
+A longer horizon can include penalties as well as rewards. It need not improve the score. [`State::is_terminal`](../src/model/state.rs) defines the task ending; [`extend_one_step`](../src/planning/rollout.rs) preserves terminal histories. For Rust practice, identify the consumed path, borrowed model, and cloned histories needed for separate branches. The [terminal-state reference](DEEP_RL_COMPANION.md#23-terminal-and-absorbing-states) expands the distinction.
+
+The boundary is also a test: every history from `LowInterest` has exactly one step, ends in `Goodbye`, and still keeps its reward of 2. Open [`reaching_goodbye_stops_history_without_losing_probability`](../src/tests.rs), predict each number it asserts, then run:
+
+```bash
+cargo test tests::reaching_goodbye_stops_history_without_losing_probability -- --exact
+```
 
 </details>
 
@@ -200,7 +218,13 @@ Then change both continuation values to zero. Explain which information still de
 <details>
 <summary>Optional exact evaluator and Rust detail</summary>
 
-Read [`values::evaluate_value`](../src/values.rs) beside [`expected_return_of`](../src/planning.rs). Both average actions under the supplied policy; taking a maximum would answer a different question. The cached key includes state and remaining horizon, while policy and discount stay fixed for this evaluation. The [dynamic-programming reference](DEEP_RL_COMPANION.md#40-dynamic-programming) gives the recurrence.
+Read [`values::evaluate_value`](../src/values.rs) beside [`expected_return_of`](../src/planning/evaluation.rs). Both average actions under the supplied policy; taking a maximum would answer a different question. The cached key includes state and remaining horizon, while policy and discount stay fixed for this evaluation. The [dynamic-programming reference](DEEP_RL_COMPANION.md#40-dynamic-programming) gives the recurrence.
+
+The agreement is also a test: both evaluators match for every state, horizon, discount, and boldness it tries. Open [`bellman_matches_complete_tree_across_states_horizons_and_parameters`](../src/values/tests.rs), predict each number it asserts, then run:
+
+```bash
+cargo test values::tests::bellman_matches_complete_tree_across_states_horizons_and_parameters -- --exact
+```
 
 </details>
 
@@ -231,7 +255,13 @@ cargo run -- sweep --horizon 1
 <details>
 <summary>Optional source and Rust detail</summary>
 
-[`evaluate_policy_grid` and `best_policy`](../src/planning.rs) evaluate candidates and select the best available one. Find the `Option` for an empty candidate set. [`Policy::possible_actions`](../src/model.rs) defines what boldness changes. Use the [grid reference](DEEP_RL_COMPANION.md#38-grid-search) and [exploration distinction](DEEP_RL_COMPANION.md#important-nuance-stochasticity-is-not-automatically-exploration) when needed.
+[`evaluate_policy_grid` and `best_policy`](../src/planning/search.rs) evaluate candidates and select the best available one. Explain why `reduce` returns an `Option`, and what it returns for an empty grid. [`Policy::possible_actions`](../src/model/policy.rs) defines what boldness changes. Use the [grid reference](DEEP_RL_COMPANION.md#38-grid-search) and [exploration distinction](DEEP_RL_COMPANION.md#important-nuance-stochasticity-is-not-automatically-exploration) when needed.
+
+The tie rule is also a test: at discount 0 all eleven candidates score 0.22, and the reported winner is boldness 0.0. Open [`zero_discount_does_not_create_a_spurious_preference_for_boldness`](../src/tests.rs), predict each number it asserts, then run:
+
+```bash
+cargo test tests::zero_discount_does_not_create_a_spurious_preference_for_boldness -- --exact
+```
 
 </details>
 
@@ -278,18 +308,24 @@ A passing assertion checks agreement with the expected result you entered. Indep
 
 **Check and explain:** the sampler uses the model, but the learner receives observations. Its values use both state and remaining horizon. Compare several seeds and budgets without expecting error to decrease in every run. The policy stays fixed throughout training.
 
+One update is also a test: [`supplied_trace_uses_bootstrap_and_per_entry_visit_counts`](../src/experience/tests.rs) asserts the target 3, the learning rate 0.5, and the new value 2 from the supplied trace. Predict each number it asserts, then run:
+
+```bash
+cargo test experience::tests::supplied_trace_uses_bootstrap_and_per_entry_visit_counts -- --exact
+```
+
 **Stop or next:** at your next available session, try one [delayed prompt](LEARNING_RECORD.md#next-available-session). Its feedback lives separately. Learner results remain pending until actual attempts are assessed.
 
 ## Keep the vocabulary attached to code
 
 | Idea | Symbol | Rust location |
 | --- | --- | --- |
-| State / action | `s`, `a` | [`State`, `Action`](../src/model.rs) |
-| Policy / world response | `π(a ∣ s)`, `P(s' ∣ s,a)` | [`Policy::possible_actions`, `DatingWorld::possible_next_states`](../src/model.rs) |
-| Immediate reward | `r` | [`DatingWorld::reward_for`, `Transition::reward`](../src/model.rs) |
-| Return / expectation | `G`, `E[G]` | [`discounted_return`](../src/planning.rs), [`expected_value`](../src/probability.rs) |
+| State / action | `s`, `a` | [`State`, `Action`](../src/model/state.rs) |
+| Policy / world response | `π(a ∣ s)`, `P(s' ∣ s,a)` | [`Policy::possible_actions`](../src/model/policy.rs), [`DatingWorld::possible_next_states`](../src/model/world.rs) |
+| Immediate reward | `r` | [`DatingWorld::reward_for`](../src/model/reward.rs), [`Transition::reward`](../src/model/transition.rs) |
+| Return / expectation | `G`, `E[G]` | [`discounted_return`](../src/planning/returns.rs), [`expected_value`](../src/probability/expectation.rs) |
 | Discount / remaining horizon | `γ`, `h` | `discount: f64`, `horizon: usize` |
-| Exact / learned value | `V_h(s)` / estimate of `V_h(s)` | [`values.rs`](../src/values.rs), [`experience.rs`](../src/experience.rs) |
+| Exact / learned value | `V_h(s)` / estimate of `V_h(s)` | [`values.rs`](../src/values.rs), [`experience/table.rs`](../src/experience/table.rs) |
 
 An `f64` is not automatically a valid probability. Finite nonnegative weights must sum to approximately one; numerical comparisons need a tolerance.
 

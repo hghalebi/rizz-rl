@@ -6,6 +6,8 @@
 //! horizon; `values` reuses smaller exact answers; `experience` learns from
 //! observations.
 //! The learning path in guides/LEARNING_PATH.md turns that reading into tasks.
+//! Each lesson file opens with a question, an example, and a prediction, and the
+//! README lists the code's eleven numbered checkpoints in reading order.
 //!
 //! At each step, predict one small result before running the corresponding
 //! command. Then change one input and explain whether the result should change.
@@ -22,7 +24,7 @@ mod exercises;
 #[cfg(test)]
 mod tests;
 
-// Keep all experiments comparable within the small exact planner's work bound.
+/// The largest horizon any command accepts, so every experiment stays within the exact planner's work bound.
 const MAX_HORIZON: usize = 6;
 
 fn main() -> std::process::ExitCode {

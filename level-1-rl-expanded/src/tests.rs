@@ -1,6 +1,6 @@
 //! Invariants shared by the concrete model and exact planner.
 
-use crate::model::{Action, DatingWorld, Policy, State};
+use crate::model::{Action, DatingWorld, InvalidBoldness, Policy, State};
 use crate::planning::{
     best_policy, discounted_return, enumerate_trajectories, evaluate_policy_grid, find_best_policy,
     possible_transitions,
@@ -8,6 +8,10 @@ use crate::planning::{
 use crate::probability::Distribution;
 
 const EPSILON: f64 = 1e-9;
+
+fn policy(boldness: f64) -> Policy {
+    Policy::try_new(boldness).expect("test boldness lies in [0, 1]")
+}
 
 fn assert_approximately_equal(actual: f64, expected: f64) {
     assert!(
@@ -61,20 +65,24 @@ fn and_then_multiplies_branch_probabilities() {
 }
 
 #[test]
+fn boldness_outside_the_unit_interval_cannot_become_a_policy() {
+    // Runtime values such as CLI text are checked here. The private field is
+    // what stops other modules from skipping this check; the compiler enforces
+    // that, and no runtime test can observe it.
+    for invalid in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -0.1, 1.1] {
+        assert_eq!(Policy::try_new(invalid), Err(InvalidBoldness), "{invalid}");
+    }
+    for valid in [0.0, 0.3, 1.0] {
+        assert_approximately_equal(policy(valid).boldness(), valid);
+    }
+}
+
+#[test]
 fn every_grid_policy_is_normalized() {
     for index in 0..=10 {
-        let policy = Policy {
-            boldness: index as f64 / 10.0,
-        };
+        let policy = policy(index as f64 / 10.0);
 
-        for state in [
-            State::JustMet,
-            State::Engaged,
-            State::Playful,
-            State::LowInterest,
-            State::MutualInterest,
-            State::Goodbye,
-        ] {
+        for state in State::ALL {
             let actions = policy.possible_actions(&state);
 
             assert!(actions.outcomes.iter().all(|(_, probability)| {
@@ -89,14 +97,7 @@ fn every_grid_policy_is_normalized() {
 #[test]
 fn every_world_branch_is_a_valid_distribution() {
     let world = DatingWorld;
-    for state in [
-        State::JustMet,
-        State::Engaged,
-        State::Playful,
-        State::LowInterest,
-        State::MutualInterest,
-        State::Goodbye,
-    ] {
+    for state in State::ALL {
         for action in [
             Action::Ask,
             Action::Story,
@@ -116,7 +117,7 @@ fn every_world_branch_is_a_valid_distribution() {
 
 #[test]
 fn reaching_goodbye_stops_history_without_losing_probability() {
-    let policy = Policy { boldness: 0.3 };
+    let policy = policy(0.3);
     let world = DatingWorld;
     let paths = enumerate_trajectories(&policy, &world, &State::LowInterest, 5);
 
@@ -130,32 +131,21 @@ fn reaching_goodbye_stops_history_without_losing_probability() {
 
 #[test]
 fn first_step_joint_probabilities_match_the_hand_calculation() {
-    let policy = Policy { boldness: 0.5 };
+    let policy = policy(0.5);
     let world = DatingWorld;
 
     let transitions = possible_transitions(&policy, &world, &State::JustMet);
-
-    let ask_to_engaged_probability: f64 = transitions
-        .outcomes
-        .iter()
-        .filter(|(transition, _)| {
-            transition.action == Action::Ask && transition.to_state == State::Engaged
-        })
-        .map(|(_, probability)| probability)
-        .sum();
-
-    let story_to_low_interest_probability: f64 = transitions
-        .outcomes
-        .iter()
-        .filter(|(transition, _)| {
-            transition.action == Action::Story && transition.to_state == State::LowInterest
-        })
-        .map(|(_, probability)| probability)
-        .sum();
-
-    assert_approximately_equal(ask_to_engaged_probability, 0.56);
-    assert_approximately_equal(story_to_low_interest_probability, 0.12);
     assert_approximately_equal(transitions.total_probability(), 1.0);
+
+    // Project each transition onto the (action, next state) event, then reuse
+    // probability_of to sum every branch that reaches that event.
+    let events = transitions.map(|transition| (transition.action, transition.to_state));
+
+    assert_approximately_equal(events.probability_of(&(Action::Ask, State::Engaged)), 0.56);
+    assert_approximately_equal(
+        events.probability_of(&(Action::Story, State::LowInterest)),
+        0.12,
+    );
 }
 
 #[test]
@@ -163,7 +153,7 @@ fn the_current_model_selects_boldness_point_three() {
     let world = DatingWorld;
     let best = find_best_policy(&world, 5, 0.95).expect("the grid contains candidate policies");
 
-    assert_approximately_equal(best.policy.boldness, 0.3);
+    assert_approximately_equal(best.policy.boldness(), 0.3);
     assert_approximately_equal(best.expected_return, 3.103947335269);
 }
 
@@ -174,5 +164,5 @@ fn zero_discount_does_not_create_a_spurious_preference_for_boldness() {
         assert_approximately_equal(score.expected_return, 0.22);
     }
     let best = best_policy(&scores).expect("the grid has eleven policies");
-    assert_approximately_equal(best.policy.boldness, 0.0);
+    assert_approximately_equal(best.policy.boldness(), 0.0);
 }
