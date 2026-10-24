@@ -92,7 +92,7 @@ impl DatingWorld {
 
             (_, Action::Space | Action::Goodbye) => Distribution::certain(State::Goodbye),
 
-            // Teaching fallback: an unsupported pair keeps the state; a strict model would refuse it.
+            // Teaching fallback: an unsupported pair keeps the state; a strict model would refuse.
             (state, _) => Distribution::certain(*state),
         }
     }
