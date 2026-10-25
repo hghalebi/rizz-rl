@@ -1,7 +1,7 @@
 //! The evaluate experiment: score one policy over every possible history.
 //!
 //! Question: what is the expected return of one boldness setting over h steps?
-//! Example: horizon 1 from JustMet averages the four first-step rewards: 0.22.
+//! Example: horizon 1 from `JustMet` averages the four first-step rewards: 0.22.
 //! Predict: at horizon 0 there is one empty history. What is its return?
 
 use std::io::{self, Write};
@@ -15,11 +15,11 @@ use crate::probability::expected_value;
 /// `E[G] = Σ P(history) · G(history)`
 pub(super) fn print(
     out: &mut impl Write,
-    world: &DatingWorld,
+    world: DatingWorld,
     settings: Evaluation,
 ) -> io::Result<()> {
     let policy = settings.policy;
-    let trajectories = enumerate_trajectories(&policy, world, &State::JustMet, settings.horizon);
+    let trajectories = enumerate_trajectories(policy, world, State::JustMet, settings.horizon);
     let score = expected_value(&trajectories, |trajectory| {
         discounted_return(trajectory, settings.discount)
     });

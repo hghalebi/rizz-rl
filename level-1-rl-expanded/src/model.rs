@@ -9,8 +9,8 @@
 //! Read the files in this order, one checkpoint each:
 //! 1. `model/state.rs`: Checkpoint 2, the states and actions.
 //! 2. `model/policy.rs`: Checkpoint 3, how the agent chooses an action.
-//! 3. `model/world.rs`: Checkpoint 4, how the world responds to an action.
-//! 4. `model/reward.rs`: Checkpoint 4, part 2, how valuable each response is.
+//! 3. `model/world.rs`: Checkpoint 4, `TransitionModel`, how the world responds to an action.
+//! 4. `model/reward.rs`: Checkpoint 4, part 2, `RewardModel`, how valuable each response is.
 //! 5. `model/transition.rs`: Checkpoint 5, one step recorded as data.
 
 mod policy;
@@ -20,8 +20,9 @@ mod transition;
 mod world;
 
 #[cfg(test)]
-pub(crate) use policy::InvalidBoldness;
-pub(crate) use policy::Policy;
-pub(crate) use state::{Action, State};
-pub(crate) use transition::Transition;
-pub(crate) use world::DatingWorld;
+pub use policy::InvalidBoldness;
+pub use policy::Policy;
+pub use reward::RewardModel;
+pub use state::{Action, State};
+pub use transition::Transition;
+pub use world::{DatingWorld, TransitionModel};

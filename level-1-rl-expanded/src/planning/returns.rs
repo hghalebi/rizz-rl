@@ -16,7 +16,7 @@ use crate::model::Transition;
 /// The weight of each reward: one more factor of `discount` for every step into the future.
 /// `1, γ, γ², γ³, ...`
 /// Invariant: the first weight is always 1, so the first reward is never discounted.
-pub(crate) fn discount_weights(discount: f64) -> impl Iterator<Item = f64> {
+pub fn discount_weights(discount: f64) -> impl Iterator<Item = f64> {
     // `move` copies `discount` into the closure, so the iterator can outlive this call.
     successors(Some(1.0), move |weight| Some(weight * discount))
 }
@@ -25,7 +25,7 @@ pub(crate) fn discount_weights(discount: f64) -> impl Iterator<Item = f64> {
 /// `G = r₀ + γ·r₁ + γ²·r₂ + ...`, so `[1, 2, 4]` at γ = 0.5 gives `1 + 1 + 1 = 3`
 /// Invariant: a history's chance plays no part here; `expected_value` applies it later.
 /// Predict: would swapping the first and last rewards preserve this return?
-pub(crate) fn discounted_return(trajectory: &[Transition], discount: f64) -> f64 {
+pub fn discounted_return(trajectory: &[Transition], discount: f64) -> f64 {
     discount_weights(discount)
         .zip(trajectory)
         .map(|(weight, transition)| weight * transition.reward)

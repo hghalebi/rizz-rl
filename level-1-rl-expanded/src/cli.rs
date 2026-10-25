@@ -33,4 +33,4 @@ mod sweep;
 #[cfg(test)]
 mod tests;
 
-pub(super) use runner::run;
+pub use runner::run;

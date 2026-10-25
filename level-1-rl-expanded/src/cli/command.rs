@@ -30,7 +30,7 @@ pub(super) enum Command {
 
 impl Command {
     /// Whether this command prints the exact-planning banner; help and sampled learning do not.
-    pub(super) fn plans_exactly(&self) -> bool {
+    pub(super) const fn plans_exactly(&self) -> bool {
         !matches!(self, Self::Help | Self::LearnValue(_) | Self::TdTrace)
     }
 }

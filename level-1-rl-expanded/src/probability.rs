@@ -14,5 +14,5 @@ mod composition;
 mod distribution;
 mod expectation;
 
-pub(crate) use distribution::Distribution;
-pub(crate) use expectation::expected_value;
+pub use distribution::Distribution;
+pub use expectation::expected_value;

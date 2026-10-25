@@ -109,7 +109,7 @@ The complete local check is:
 python3 scripts/check.py
 ```
 
-It requires Python 3.9 or later, Rust, Cargo, rustfmt, and Clippy. It checks formatting, strict Clippy, rustdoc on every private item, locked tests, documentation links and anchors, documented lesson commands, and exercise selectors. It reports unfinished starter tasks separately from reference failures. The GitHub Actions workflow uses the same script; a local success does not establish that hosted CI ran.
+It requires Python 3.9 or later, Rust, Cargo, rustfmt, and Clippy. The script checks formatting, Clippy with the pedantic, nursery, and cargo groups denied, rustdoc on every private item, locked tests, documentation links and anchors, documented lesson commands, and exercise selectors. Unfinished starter tasks are reported separately from reference failures. The GitHub Actions workflow uses the same script; a local success does not establish that hosted CI ran.
 
 The underlying Rust checks are:
 

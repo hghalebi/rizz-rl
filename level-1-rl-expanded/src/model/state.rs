@@ -1,7 +1,7 @@
 //! Checkpoint 2: the states the agent can be in and the actions it can take.
 //!
 //! Question: what situations can the agent be in, and what can it choose to do?
-//! Example: from JustMet the agent can choose Ask; Goodbye is the only terminal state.
+//! Example: from `JustMet` the agent can choose `Ask`; `Goodbye` is the only terminal state.
 //! Predict: from which states can the next step still produce a reward?
 
 // ============================================================================
@@ -11,7 +11,7 @@
 /// `State ──policy──► Action ──world──► next State`
 /// Invariant: the variants carry no data, so `Copy` makes passing a state as cheap as an integer.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum State {
+pub enum State {
     JustMet,
     Engaged,
     Playful,
@@ -32,16 +32,16 @@ impl State {
     ];
 
     /// Whether the meaningful interaction has ended.
-    /// `Goodbye ──► terminal`; MutualInterest still has one final Goodbye transition
-    /// Invariant: the reward for arriving at Goodbye counts even though no future follows it.
-    pub(crate) fn is_terminal(&self) -> bool {
+    /// `Goodbye ──► terminal`; `MutualInterest` still has one final `Goodbye` transition
+    /// Invariant: the reward for arriving at `Goodbye` counts even though no future follows it.
+    pub(crate) const fn is_terminal(self) -> bool {
         matches!(self, Self::Goodbye)
     }
 }
 
 /// A choice available to the agent.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum Action {
+pub enum Action {
     Ask,
     Story,
     Tease,

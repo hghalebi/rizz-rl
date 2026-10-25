@@ -1,5 +1,5 @@
 //! EXERCISE ONLY. Implement one function; other TODOs may remain untouched.
-//! Read guides/COMPOSITION_LESSON.md for contracts, routes, and optional hints.
+//! Read `guides/COMPOSITION_LESSON.md` for contracts, routes, and optional hints.
 //! Shared cases contain expected outputs; solutions.rs contains worked answers.
 //! Add your own cases in the marked test wrapper for your current task. Keep
 //! its shared-case call: your examples supplement the acceptance checks.

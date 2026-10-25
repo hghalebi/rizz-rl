@@ -14,7 +14,7 @@ use crate::model::{Action, DatingWorld, Policy, State};
 // ============================================================================
 /// One candidate policy and the score it earned under the shared settings.
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct PolicyEvaluation {
+pub struct PolicyEvaluation {
     pub(crate) policy: Policy,
     pub(crate) expected_return: f64,
 }
@@ -23,8 +23,8 @@ pub(crate) struct PolicyEvaluation {
 /// `boldness ∈ {0.0, 0.1, ..., 1.0} ──expected_return_of──► (policy, score)`
 /// Invariant: only boldness differs between candidates; the world's probabilities never change.
 /// Predict: if 0.3 wins this grid, what do we know about the untested value 0.34?
-pub(crate) fn evaluate_policy_grid(
-    world: &DatingWorld,
+pub fn evaluate_policy_grid(
+    world: DatingWorld,
     horizon: usize,
     discount: f64,
 ) -> Vec<PolicyEvaluation> {
@@ -33,10 +33,10 @@ pub(crate) fn evaluate_policy_grid(
     (0..=10)
         .map(|index| {
             // index / 10 lies in [0, 1] for every index in 0..=10, so this `expect` cannot fire.
-            let candidate_policy = Policy::try_new(index as f64 / 10.0)
+            let candidate_policy = Policy::try_new(f64::from(index) / 10.0)
                 .expect("every grid value index / 10 lies in [0, 1]");
 
-            let engaged_actions = candidate_policy.possible_actions(&State::Engaged);
+            let engaged_actions = candidate_policy.possible_actions(State::Engaged);
 
             debug!(
                 boldness = candidate_policy.boldness(),
@@ -48,7 +48,7 @@ pub(crate) fn evaluate_policy_grid(
             );
 
             let candidate_expected_return =
-                expected_return_of(&candidate_policy, world, horizon, discount);
+                expected_return_of(candidate_policy, world, horizon, discount);
 
             info!(
                 boldness = candidate_policy.boldness(),
@@ -71,7 +71,7 @@ const TIE_TOLERANCE: f64 = 1e-12;
 /// The first candidate that no later candidate beats by more than `TIE_TOLERANCE`.
 /// `best ──► candidate  only if  candidate.score > best.score + TIE_TOLERANCE`
 /// Invariant: ties keep the earlier, lower boldness; an empty grid has no best, so `None`.
-pub(crate) fn best_policy(evaluations: &[PolicyEvaluation]) -> Option<PolicyEvaluation> {
+pub fn best_policy(evaluations: &[PolicyEvaluation]) -> Option<PolicyEvaluation> {
     evaluations.iter().copied().reduce(|best, candidate| {
         if candidate.expected_return > best.expected_return + TIE_TOLERANCE {
             candidate
@@ -82,8 +82,8 @@ pub(crate) fn best_policy(evaluations: &[PolicyEvaluation]) -> Option<PolicyEval
 }
 
 #[cfg(test)]
-pub(crate) fn find_best_policy(
-    world: &DatingWorld,
+pub fn find_best_policy(
+    world: DatingWorld,
     horizon: usize,
     discount: f64,
 ) -> Option<PolicyEvaluation> {

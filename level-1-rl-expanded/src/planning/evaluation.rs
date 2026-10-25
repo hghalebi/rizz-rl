@@ -10,13 +10,13 @@ use super::{discounted_return, enumerate_trajectories};
 use crate::model::{DatingWorld, Policy, State};
 use crate::probability::expected_value;
 
-/// Score a policy from JustMet: discount inside each history, then weight histories by chance.
+/// Score a policy from `JustMet`: discount inside each history, then weight histories by chance.
 /// `E[G] = Σ P(history) · G(history)`;  returns 2 @ 0.75 and 6 @ 0.25 give 3
 /// Invariant: the histories' chances still sum to 1; branching moves mass, never creates it.
 /// Predict: could a guaranteed return of 3 hide a different risk from this pair?
-pub(crate) fn expected_return_of(
-    policy: &Policy,
-    world: &DatingWorld,
+pub fn expected_return_of(
+    policy: Policy,
+    world: DatingWorld,
     horizon: usize,
     discount: f64,
 ) -> f64 {
@@ -28,7 +28,7 @@ pub(crate) fn expected_return_of(
     )
     .entered();
 
-    let possible_trajectories = enumerate_trajectories(policy, world, &State::JustMet, horizon);
+    let possible_trajectories = enumerate_trajectories(policy, world, State::JustMet, horizon);
 
     let probability_mass = possible_trajectories.total_probability();
 

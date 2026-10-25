@@ -15,7 +15,7 @@ use crate::values::evaluate_value;
 /// Invariant: both columns evaluate the same model and policy; gaps come only from floating point.
 pub(super) fn print(
     out: &mut impl Write,
-    world: &DatingWorld,
+    world: DatingWorld,
     settings: Evaluation,
 ) -> io::Result<()> {
     let policy = settings.policy;
@@ -34,8 +34,8 @@ pub(super) fn print(
         "   H       Tree E[G]   Bellman V_h   absolute difference   cached subproblems"
     )?;
     for horizon in 0..=settings.horizon {
-        let score = expected_return_of(&policy, world, horizon, settings.discount);
-        let value = evaluate_value(&policy, world, &State::JustMet, horizon, settings.discount);
+        let score = expected_return_of(policy, world, horizon, settings.discount);
+        let value = evaluate_value(policy, world, State::JustMet, horizon, settings.discount);
         writeln!(
             out,
             "{horizon:>4}   {score:>13.6}   {:>11.6}   {:>19.3e}   {:>18}",

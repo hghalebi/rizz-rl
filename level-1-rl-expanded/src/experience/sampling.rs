@@ -5,7 +5,7 @@
 //! Predict: which branch does the draw exactly 0.25 pick?
 
 use super::LearningError;
-use crate::model::{DatingWorld, Policy, State, Transition};
+use crate::model::{DatingWorld, Policy, RewardModel, State, Transition, TransitionModel};
 use crate::probability::Distribution;
 
 /// Total probability may miss 1 by this much and still count as normalized.
@@ -64,9 +64,9 @@ pub(super) fn select_outcome<T>(
 /// `state ──policy, draw 1──► action ──world, draw 2──► next_state`
 /// Invariant: the sampler sees the model; the learner later sees only this Transition.
 pub(super) fn sample_transition(
-    policy: &Policy,
-    world: &DatingWorld,
-    state: &State,
+    policy: Policy,
+    world: DatingWorld,
+    state: State,
     action_draw: f64,
     next_state_draw: f64,
 ) -> Result<Transition, LearningError> {
@@ -75,13 +75,13 @@ pub(super) fn sample_transition(
     }
     let actions = policy.possible_actions(state);
     let action = select_outcome(&actions, action_draw)?;
-    let next_states = world.possible_next_states(state, action);
+    let next_states = world.possible_next_states(state, *action);
     let next_state = select_outcome(&next_states, next_state_draw)?;
     // The selections borrow local distributions; `*` copies the chosen values out before they drop.
     Ok(Transition {
-        from_state: *state,
+        from_state: state,
         action: *action,
-        reward: world.reward_for(state, action, next_state),
+        reward: world.reward_for(state, *action, *next_state),
         to_state: *next_state,
     })
 }

@@ -44,7 +44,7 @@ fn supplied_trace_uses_bootstrap_and_per_entry_visit_counts() {
     close(second.alpha, 0.5);
     close(second.value, 2.0);
     assert_eq!(second.visits, 2);
-    assert_eq!(table.entry(&State::Engaged, 1).unwrap().visits, 1);
+    assert_eq!(table.entry(State::Engaged, 1).unwrap().visits, 1);
 }
 
 #[test]
@@ -63,9 +63,9 @@ fn horizon_keys_are_distinct_and_last_step_does_not_bootstrap() {
         .unwrap();
     close(longer.value, 12.0);
     assert_eq!(longer.visits, 1);
-    close(table.value(&State::JustMet, 1), 2.0);
-    close(table.value(&State::Engaged, 0), 0.0);
-    close(table.value(&State::Goodbye, 3), 0.0);
+    close(table.value(State::JustMet, 1), 2.0);
+    close(table.value(State::Engaged, 0), 0.0);
+    close(table.value(State::Goodbye, 3), 0.0);
 }
 
 #[test]
@@ -157,16 +157,16 @@ fn sampling_rejects_malformed_mass_even_when_draw_hits_an_earlier_branch() {
 #[test]
 fn supplied_draws_choose_action_then_world_outcome_and_reward() {
     let policy = policy(0.3);
-    let ask = sample_transition(&policy, &DatingWorld, &State::JustMet, 0.0, 0.0).unwrap();
+    let ask = sample_transition(policy, DatingWorld, State::JustMet, 0.0, 0.0).unwrap();
     assert_eq!(ask.action, Action::Ask);
     assert_eq!(ask.to_state, State::Engaged);
     close(ask.reward, 1.0);
-    let story = sample_transition(&policy, &DatingWorld, &State::JustMet, 0.7, 0.6).unwrap();
+    let story = sample_transition(policy, DatingWorld, State::JustMet, 0.7, 0.6).unwrap();
     assert_eq!(story.action, Action::Story);
     assert_eq!(story.to_state, State::LowInterest);
     close(story.reward, -2.0);
     assert_eq!(
-        sample_transition(&policy, &DatingWorld, &State::Goodbye, 0.0, 0.0).map(|_| ()),
+        sample_transition(policy, DatingWorld, State::Goodbye, 0.0, 0.0).map(|_| ()),
         Err(LearningError::SampleFromTerminal)
     );
 }
@@ -198,7 +198,7 @@ fn same_seed_repeats_training_with_bounded_table_and_horizon_zero_is_empty() {
     let first = train(&config).unwrap();
     assert_eq!(first, train(&config).unwrap());
     assert!(first.entries.len() <= 5 * config.horizon);
-    assert_eq!(first.entry(&State::JustMet, 5).unwrap().visits, 100);
+    assert_eq!(first.entry(State::JustMet, 5).unwrap().visits, 100);
     let empty = train(&LearningConfig::new(policy(0.3), 0, 0.95, 100, 7).unwrap()).unwrap();
     assert!(empty.entries.is_empty());
 }
@@ -212,9 +212,9 @@ fn online_td_does_not_backfill_an_earlier_update_in_the_same_episode() {
     table
         .observe(1, &observation(State::Engaged, 4.0, State::Goodbye))
         .unwrap();
-    close(table.value(&State::JustMet, 2), 1.0);
+    close(table.value(State::JustMet, 2), 1.0);
     table
         .observe(2, &observation(State::JustMet, 1.0, State::Engaged))
         .unwrap();
-    close(table.value(&State::JustMet, 2), 2.0);
+    close(table.value(State::JustMet, 2), 2.0);
 }

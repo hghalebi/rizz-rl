@@ -10,7 +10,7 @@ use crate::model::Policy;
 use crate::MAX_HORIZON;
 
 /// Upper bound on the episode budget, so a typo cannot start an hour-long run.
-pub(crate) const MAX_EPISODES: usize = 1_000_000;
+pub const MAX_EPISODES: usize = 1_000_000;
 
 /// A discount in [0, 1], checked once by `LearningConfig::new`.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -18,7 +18,7 @@ pub(super) struct Discount(pub(super) f64);
 
 /// Everything one run needs: a validated policy, horizon, discount, episode budget, and seed.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct LearningConfig {
+pub struct LearningConfig {
     pub(super) policy: Policy,
     pub(super) horizon: usize,
     pub(super) discount: Discount,
@@ -57,7 +57,7 @@ impl LearningConfig {
 
 /// Settings rejected before any table is allocated or any episode is sampled.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum ConfigError {
+pub enum ConfigError {
     InvalidDiscount,
     HorizonTooLong,
     EpisodesOutOfRange,

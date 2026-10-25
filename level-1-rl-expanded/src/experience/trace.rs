@@ -2,7 +2,7 @@
 //!
 //! Question: what happens inside three hand-picked updates, with every number visible?
 //! Example: reward 1 plus 0.5 times a stored next value of 4 gives target 3.
-//! Predict: the second update to (h = 2, JustMet) uses which learning rate?
+//! Predict: the second update to (h = 2, `JustMet`) uses which learning rate?
 
 use std::fmt;
 
@@ -22,14 +22,14 @@ struct TraceStep {
 }
 
 /// The supplied TD trace: computed once by `trace`, formatted by `Display`.
-pub(crate) struct TdTrace {
+pub struct TdTrace {
     steps: Vec<TraceStep>,
 }
 
 /// Apply three supplied observations to an empty table and keep every update.
 /// `(h, from, reward, to) ──observe──► Update`, in the order listed
-/// Invariant: the rewards are supplied, not drawn from DatingWorld; the update rule is training's.
-pub(crate) fn trace() -> Result<TdTrace, LearningError> {
+/// Invariant: rewards are supplied, not drawn from `DatingWorld`; the update rule is training's.
+pub fn trace() -> Result<TdTrace, LearningError> {
     let mut table = ValueTable::new(Discount(TRACE_DISCOUNT));
     let observations = [
         (1, State::Engaged, 4.0, State::Goodbye),

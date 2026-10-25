@@ -24,7 +24,7 @@ pub(super) fn set_once<T>(
 }
 
 /// Turn a boolean flag on once; a repeated switch is refused.
-pub(super) fn switch_on(switch: &mut bool, flag: Flag) -> Result<(), CliError> {
+pub(super) const fn switch_on(switch: &mut bool, flag: Flag) -> Result<(), CliError> {
     // `mem::replace` sets the switch and hands back its old value in one step.
     if std::mem::replace(switch, true) {
         Err(CliError::Repeated(flag))

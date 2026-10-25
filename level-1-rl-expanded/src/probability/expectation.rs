@@ -12,10 +12,7 @@ use super::Distribution;
 /// Score every outcome, then average the scores using each outcome's own chance.
 /// `E[value] = Σ probability(outcome) · value(outcome)`
 /// Invariant: no division by the row count; the probabilities already sum to 1.
-pub(crate) fn expected_value<T>(
-    distribution: &Distribution<T>,
-    value_of: impl Fn(&T) -> f64,
-) -> f64 {
+pub fn expected_value<T>(distribution: &Distribution<T>, value_of: impl Fn(&T) -> f64) -> f64 {
     distribution
         .outcomes
         .iter()

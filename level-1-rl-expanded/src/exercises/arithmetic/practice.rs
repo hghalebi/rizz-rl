@@ -40,7 +40,7 @@ fn td_target(_reward: f64, _discount: f64, _next_value: f64, _terminated: bool) 
 /// Exercise 4: check whether weights form a probability distribution.
 /// Require at least one weight, every weight finite and in [0, 1], and the total
 /// within 1e-9 of 1. Reject invalid inputs; do not repair or normalize them.
-/// Rust focus: borrowed slices, f64::is_finite, and explicit validation.
+/// Rust focus: borrowed slices, `f64::is_finite`, and explicit validation.
 fn is_probability_distribution(_weights: &[f64]) -> bool {
     todo!("Exercise 4: validate a probability distribution")
 }
@@ -64,7 +64,7 @@ fn epsilon_greedy(_q_values: &[f64], _epsilon: f64) -> Vec<f64> {
 }
 
 /// Exercise 7: update the mean episode return after observing a new return.
-/// sample_count includes the NEW sample and is at least 1. previous_mean
+/// `sample_count` includes the NEW sample and is at least 1. `previous_mean`
 /// summarizes earlier samples; on sample 1 it is irrelevant. Do not keep the
 /// full history. Only the updated mean is returned.
 /// Rust focus: convert a count to f64 and keep a function free of side effects.
@@ -73,7 +73,7 @@ fn update_mean(_previous_mean: f64, _new_return: f64, _sample_count: usize) -> f
 }
 
 /// Exercise 8: move a value estimate toward the TD target from Exercise 3.
-/// learning_rate 0 leaves the current estimate unchanged; 1 replaces it with
+/// `learning_rate` 0 leaves the current estimate unchanged; 1 replaces it with
 /// the target. True termination disables the next-state bootstrap. Return the
 /// updated value; do not mutate the caller's storage.
 /// Rust focus: reuse a function and name intermediate quantities clearly.
@@ -104,9 +104,9 @@ fn q_learning_target(
 }
 
 /// Exercise 10: evaluate one Bellman expectation backup for a fixed policy.
-/// Each tuple is (joint_probability, immediate_reward, next_state_value).
+/// Each tuple is (`joint_probability`, `immediate_reward`, `next_state_value`).
 /// Probabilities already include the policy and the world model. A terminal
-/// branch supplies next_state_value = 0. An empty list has weighted sum zero.
+/// branch supplies `next_state_value` = 0. An empty list has weighted sum zero.
 /// Average over the alternatives; do not choose the maximum branch.
 /// Rust focus: destructure tuples and distinguish time weights from likelihoods.
 fn bellman_backup(_outcomes: &[(f64, f64, f64)], _discount: f64) -> f64 {

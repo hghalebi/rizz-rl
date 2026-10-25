@@ -26,7 +26,7 @@ mod training;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use config::{ConfigError, LearningConfig, MAX_EPISODES};
-pub(crate) use error::LearningError;
-pub(crate) use report::run;
-pub(crate) use trace::trace;
+pub use config::{ConfigError, LearningConfig, MAX_EPISODES};
+pub use error::LearningError;
+pub use report::run;
+pub use trace::trace;

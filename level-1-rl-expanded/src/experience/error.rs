@@ -2,7 +2,7 @@
 //!
 //! Question: what can go wrong during learning, and what does the user read when it does?
 //! Example: a reward of NaN is refused before the table changes.
-//! Predict: which error does sampling a transition out of Goodbye produce?
+//! Predict: which error does sampling a transition out of `Goodbye` produce?
 
 use std::fmt;
 
@@ -11,7 +11,7 @@ use crate::MAX_HORIZON;
 /// Why an observation or a sampling step was refused. Every check runs before
 /// the table changes, so an error never leaves a half-applied update behind.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum LearningError {
+pub enum LearningError {
     RemainingHorizonOutOfRange,
     LearnFromTerminal,
     SampleFromTerminal,

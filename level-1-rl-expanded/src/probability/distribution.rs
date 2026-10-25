@@ -1,7 +1,7 @@
 //! Checkpoint 1: `Distribution`, a list of possible values with a chance beside each.
 //!
 //! Question: how do we write down several possible values, each with its own chance?
-//! Example: Playful @ 0.55, Engaged @ 0.25, LowInterest @ 0.20 is one `Distribution<State>`.
+//! Example: `Playful` @ 0.55, `Engaged` @ 0.25, `LowInterest` @ 0.20 is one `Distribution<State>`.
 //! Predict: what is `total_probability()` for that example, and for `certain(Goodbye)`?
 //!
 //! Its two composition operations, `map` and `and_then`, live in `composition.rs`.
@@ -18,7 +18,7 @@
 /// ```
 /// Invariant: callers supply finite, nonnegative weights that sum to 1; this type does not check.
 #[derive(Debug, Clone)]
-pub(crate) struct Distribution<T> {
+pub struct Distribution<T> {
     /// One row per branch, so two rows may hold the same value.
     pub(crate) outcomes: Vec<(T, f64)>,
 }
@@ -32,7 +32,7 @@ impl<T> Distribution<T> {
     }
 
     /// How many branches are represented, not how many distinct values.
-    pub(crate) fn number_of_outcomes(&self) -> usize {
+    pub(crate) const fn number_of_outcomes(&self) -> usize {
         self.outcomes.len()
     }
 
@@ -49,7 +49,7 @@ impl<T> Distribution<T> {
 impl<T: PartialEq> Distribution<T> {
     /// The probability of one event, summed over every branch that produces it.
     /// `P(target) = Σ probability  over rows where value == target`
-    /// Invariant: Ask and Story can both reach Engaged; equality decides which rows belong.
+    /// Invariant: `Ask` and `Story` can both reach `Engaged`; equality decides which rows belong.
     pub(crate) fn probability_of(&self, target: &T) -> f64 {
         self.outcomes
             .iter()

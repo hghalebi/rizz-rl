@@ -1,16 +1,24 @@
 //! Checkpoint 4, part 2: rewards, R(s, a, s'), say how valuable each consequence is.
 //!
 //! Question: how much is one step worth, given where it started and where it landed?
-//! Example: Coffee from Engaged earns +8 on MutualInterest and -8 on LowInterest.
-//! Predict: with chances 0.15 and 0.85, is Coffee's average immediate reward positive?
+//! Example: `Coffee` from `Engaged` earns +8 on `MutualInterest` and -8 on `LowInterest`.
+//! Predict: with chances 0.15 and 0.85, is `Coffee`'s average immediate reward positive?
 
 use super::{Action, DatingWorld, State};
 
-impl DatingWorld {
+/// The reward half of a world model, `R(s, a, s')`: how valuable one step was.
+/// `(state, action, next_state) ──► reward`
+/// Invariant: probability answers "how likely?"; reward answers "how valuable?". Never mix them.
+pub trait RewardModel {
+    /// The reward for one step, from `state` through `action` to `next_state`.
+    fn reward_for(&self, state: State, action: Action, next_state: State) -> f64;
+}
+
+impl RewardModel for DatingWorld {
     /// The reward for one step: how valuable it was, given where it started and where it landed.
-    /// `R(s, a, s')`;  Coffee from Engaged averages `0.15 · 8 + 0.85 · (-8) = -5.6`
+    /// `R(s, a, s')`;  `Coffee` from `Engaged` averages `0.15 · 8 + 0.85 · (-8) = -5.6`
     /// Invariant: arms go from most specific to broadest, so a penalty wins over a general reward.
-    pub(crate) fn reward_for(&self, state: &State, action: &Action, next_state: &State) -> f64 {
+    fn reward_for(&self, state: State, action: Action, next_state: State) -> f64 {
         match (state, action, next_state) {
             // Off-policy guard: the policy never picks this, but the reward model still prices it.
             (State::LowInterest, Action::Coffee, _) => -12.0,

@@ -1,6 +1,6 @@
 //! Invariants shared by the concrete model and exact planner.
 
-use crate::model::{Action, DatingWorld, InvalidBoldness, Policy, State};
+use crate::model::{Action, DatingWorld, InvalidBoldness, Policy, State, TransitionModel};
 use crate::planning::{
     best_policy, discounted_return, enumerate_trajectories, evaluate_policy_grid, find_best_policy,
     possible_transitions,
@@ -80,10 +80,10 @@ fn boldness_outside_the_unit_interval_cannot_become_a_policy() {
 #[test]
 fn every_grid_policy_is_normalized() {
     for index in 0..=10 {
-        let policy = policy(index as f64 / 10.0);
+        let policy = policy(f64::from(index) / 10.0);
 
         for state in State::ALL {
-            let actions = policy.possible_actions(&state);
+            let actions = policy.possible_actions(state);
 
             assert!(actions.outcomes.iter().all(|(_, probability)| {
                 probability.is_finite() && (0.0..=1.0).contains(probability)
@@ -106,7 +106,7 @@ fn every_world_branch_is_a_valid_distribution() {
             Action::Space,
             Action::Goodbye,
         ] {
-            let outcomes = world.possible_next_states(&state, &action);
+            let outcomes = world.possible_next_states(state, action);
             assert_approximately_equal(outcomes.total_probability(), 1.0);
             assert!(outcomes.outcomes.iter().all(|(_, probability)| {
                 probability.is_finite() && (0.0..=1.0).contains(probability)
@@ -119,7 +119,7 @@ fn every_world_branch_is_a_valid_distribution() {
 fn reaching_goodbye_stops_history_without_losing_probability() {
     let policy = policy(0.3);
     let world = DatingWorld;
-    let paths = enumerate_trajectories(&policy, &world, &State::LowInterest, 5);
+    let paths = enumerate_trajectories(policy, world, State::LowInterest, 5);
 
     assert_approximately_equal(paths.total_probability(), 1.0);
     for (trajectory, _) in paths.outcomes {
@@ -134,7 +134,7 @@ fn first_step_joint_probabilities_match_the_hand_calculation() {
     let policy = policy(0.5);
     let world = DatingWorld;
 
-    let transitions = possible_transitions(&policy, &world, &State::JustMet);
+    let transitions = possible_transitions(policy, world, State::JustMet);
     assert_approximately_equal(transitions.total_probability(), 1.0);
 
     // Project each transition onto the (action, next state) event, then reuse
@@ -151,15 +151,15 @@ fn first_step_joint_probabilities_match_the_hand_calculation() {
 #[test]
 fn the_current_model_selects_boldness_point_three() {
     let world = DatingWorld;
-    let best = find_best_policy(&world, 5, 0.95).expect("the grid contains candidate policies");
+    let best = find_best_policy(world, 5, 0.95).expect("the grid contains candidate policies");
 
     assert_approximately_equal(best.policy.boldness(), 0.3);
-    assert_approximately_equal(best.expected_return, 3.103947335269);
+    assert_approximately_equal(best.expected_return, 3.103_947_335_269);
 }
 
 #[test]
 fn zero_discount_does_not_create_a_spurious_preference_for_boldness() {
-    let scores = evaluate_policy_grid(&DatingWorld, 5, 0.0);
+    let scores = evaluate_policy_grid(DatingWorld, 5, 0.0);
     for score in &scores {
         assert_approximately_equal(score.expected_return, 0.22);
     }

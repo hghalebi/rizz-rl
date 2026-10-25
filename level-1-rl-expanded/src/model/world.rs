@@ -1,10 +1,11 @@
 //! Checkpoint 4: the world model, which turns an action into possible consequences.
 //!
 //! Question: given a state and a chosen action, how likely is each next state?
-//! Example: Ask from JustMet reaches Engaged with chance 0.80 and LowInterest with 0.20.
+//! Example: `Ask` from `JustMet` reaches `Engaged` with chance 0.80 and `LowInterest` with 0.20.
 //! Predict: does changing boldness change either of those two chances?
 //!
 //! The reward for each consequence lives next door, in `model/reward.rs`.
+//! Both halves are traits, `TransitionModel` and `RewardModel`: the P and R of an MDP.
 
 use super::{Action, State};
 use crate::probability::Distribution;
@@ -16,17 +17,21 @@ use crate::probability::Distribution;
 /// `(State, Action) ──P(s'|s,a)──► Distribution<State>`
 /// Invariant: these chances are conditional on the action; `possible_transitions` applies π(a|s).
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct DatingWorld;
+pub struct DatingWorld;
 
-impl DatingWorld {
+/// The transition half of a world model, `P(s'|s,a)`: what can happen next, and how likely.
+/// `(state, action) ──► Distribution<State>`
+/// Invariant: a known model like `DatingWorld` and a learned model answer this same question.
+pub trait TransitionModel {
+    /// The possible next states after taking `action` in `state`, each with its chance.
+    fn possible_next_states(&self, state: State, action: Action) -> Distribution<State>;
+}
+
+impl TransitionModel for DatingWorld {
     /// The possible next states after taking `action` in `state`.
     /// `JustMet ──Ask──► Engaged @ 0.80 | LowInterest @ 0.20`
     /// Invariant: each arm sums to 1; an unsupported pair keeps the state, a teaching shortcut.
-    pub(crate) fn possible_next_states(
-        &self,
-        state: &State,
-        action: &Action,
-    ) -> Distribution<State> {
+    fn possible_next_states(&self, state: State, action: Action) -> Distribution<State> {
         match (state, action) {
             (State::JustMet, Action::Ask) => Distribution {
                 outcomes: vec![(State::Engaged, 0.80), (State::LowInterest, 0.20)],
@@ -84,16 +89,11 @@ impl DatingWorld {
                 outcomes: vec![(State::MutualInterest, 0.75), (State::LowInterest, 0.25)],
             },
 
-            (State::LowInterest, Action::Space | Action::Goodbye) => {
-                Distribution::certain(State::Goodbye)
-            }
-
-            (State::MutualInterest, Action::Goodbye) => Distribution::certain(State::Goodbye),
-
+            // `Space` and `Goodbye` end the conversation from any state that offers them.
             (_, Action::Space | Action::Goodbye) => Distribution::certain(State::Goodbye),
 
             // Teaching fallback: an unsupported pair keeps the state; a strict model would refuse.
-            (state, _) => Distribution::certain(*state),
+            (state, _) => Distribution::certain(state),
         }
     }
 }

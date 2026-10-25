@@ -5,7 +5,7 @@
 //! uncertain branches combine. `planning` scores histories up to the selected
 //! horizon; `values` reuses smaller exact answers; `experience` learns from
 //! observations.
-//! The learning path in guides/LEARNING_PATH.md turns that reading into tasks.
+//! The learning path in `guides/LEARNING_PATH.md` turns that reading into tasks.
 //! Each lesson file opens with a question, an example, and a prediction, and the
 //! README lists the code's eleven numbered checkpoints in reading order.
 //!

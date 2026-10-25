@@ -21,7 +21,7 @@ fn one_step_weights_rewards_without_discounting_them() {
     // Engaged receives +1 with probability .74; LowInterest receives -2 with .26.
     let policy = policy(0.5);
     for discount in [0.0, 0.95, 1.0] {
-        let value = evaluate_value(&policy, &DatingWorld, &State::JustMet, 1, discount);
+        let value = evaluate_value(policy, DatingWorld, State::JustMet, 1, discount);
         assert_close(value.expected_return, 0.22);
         assert_eq!(value.evaluated_states, 1);
     }
@@ -31,12 +31,12 @@ fn one_step_weights_rewards_without_discounting_them() {
 fn terminal_and_zero_horizon_have_no_future_reward() {
     let policy = policy(0.5);
     for (state, horizon) in [(State::Goodbye, 4), (State::Engaged, 0)] {
-        let value = evaluate_value(&policy, &DatingWorld, &state, horizon, 0.95);
+        let value = evaluate_value(policy, DatingWorld, state, horizon, 0.95);
         assert_close(value.expected_return, 0.0);
         assert_eq!(value.evaluated_states, 0);
     }
     // Reward for entering Goodbye still counts; only rewards after it stop.
-    let value = evaluate_value(&policy, &DatingWorld, &State::LowInterest, 4, 0.95);
+    let value = evaluate_value(policy, DatingWorld, State::LowInterest, 4, 0.95);
     assert_close(value.expected_return, 2.0);
     assert_eq!(value.evaluated_states, 1);
 }
@@ -83,15 +83,15 @@ fn the_greedy_action_can_depend_on_remaining_horizon() {
 
 #[test]
 fn bellman_matches_complete_tree_across_states_horizons_and_parameters() {
-    for state in &State::ALL {
+    for state in State::ALL {
         for horizon in 0..=4 {
             for discount in [0.0, 0.95, 1.0] {
                 for boldness in [0.0, 0.3, 0.5, 1.0] {
                     let policy = policy(boldness);
-                    let tree = enumerate_trajectories(&policy, &DatingWorld, state, horizon);
+                    let tree = enumerate_trajectories(policy, DatingWorld, state, horizon);
                     let tree_value =
                         expected_value(&tree, |path| discounted_return(path, discount));
-                    let bellman = evaluate_value(&policy, &DatingWorld, state, horizon, discount);
+                    let bellman = evaluate_value(policy, DatingWorld, state, horizon, discount);
                     assert_close(bellman.expected_return, tree_value);
                     // Five nonterminal states times h possible remaining-step values.
                     assert!(bellman.evaluated_states <= 5 * horizon);

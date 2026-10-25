@@ -59,6 +59,10 @@ pub(super) fn choices() -> Distribution<String> {
     }
 }
 
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "the signature is the lesson's `StringBranch`, `fn(String) -> Distribution<String>`; this fixture only reads the label"
+)]
 pub(super) fn response(choice: String) -> Distribution<String> {
     let engaged = match choice.as_str() {
         "ask" => 0.8,
@@ -70,6 +74,10 @@ pub(super) fn response(choice: String) -> Distribution<String> {
     }
 }
 
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "the signature is the lesson's `StringBranch`, `fn(String) -> Distribution<String>`; this fixture only reads the label"
+)]
 fn travel(route: String) -> Distribution<String> {
     let goal = match route.as_str() {
         "north" => 0.75,

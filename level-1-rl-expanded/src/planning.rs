@@ -1,6 +1,6 @@
 //! Exact trajectory evaluation and search across the fixed policy grid.
 //!
-//! Ask two separate questions: what does one possible history earn, and how
+//! `Ask` two separate questions: what does one possible history earn, and how
 //! good is the policy across all histories? The data flow keeps them separate:
 //! possible histories -> one return per history -> probability-weighted score.
 //!
@@ -17,10 +17,10 @@ mod rollout;
 mod search;
 mod transitions;
 
-pub(crate) use evaluation::expected_return_of;
-pub(crate) use returns::{discount_weights, discounted_return};
-pub(crate) use rollout::{enumerate_trajectories, Trajectory};
+pub use evaluation::expected_return_of;
+pub use returns::{discount_weights, discounted_return};
+pub use rollout::{enumerate_trajectories, Trajectory};
 #[cfg(test)]
-pub(crate) use search::find_best_policy;
-pub(crate) use search::{best_policy, evaluate_policy_grid};
-pub(crate) use transitions::possible_transitions;
+pub use search::find_best_policy;
+pub use search::{best_policy, evaluate_policy_grid};
+pub use transitions::possible_transitions;

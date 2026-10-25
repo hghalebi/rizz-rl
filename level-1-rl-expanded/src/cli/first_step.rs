@@ -1,8 +1,8 @@
 //! The first-step experiment: one decision, its branches, and their chances.
 //!
-//! Question: from JustMet, how likely is each (action, next state) pair, and what is
+//! Question: from `JustMet`, how likely is each (action, next state) pair, and what is
 //! the average immediate reward?
-//! Example: Ask (0.70) then Engaged given Ask (0.80) is one branch with chance 0.56.
+//! Example: `Ask` (0.70) then `Engaged` given `Ask` (0.80) is one branch with chance 0.56.
 //! Predict: what do the four branch chances sum to? Does boldness change any of them?
 
 use std::io::{self, Write};
@@ -12,7 +12,7 @@ use crate::model::{DatingWorld, State, Transition};
 use crate::planning::possible_transitions;
 use crate::probability::{expected_value, Distribution};
 
-/// Print every first-step branch from JustMet with its joint chance, then the total mass.
+/// Print every first-step branch from `JustMet` with its joint chance, then the total mass.
 /// ```text
 /// JustMet ──Ask   0.70──┬── Engaged     | Ask    0.80  ──► 0.56
 ///                       └── LowInterest | Ask    0.20  ──► 0.14
@@ -26,7 +26,7 @@ fn print_first_step_walkthrough(
 ) -> io::Result<()> {
     writeln!(
         out,
-        r#"
+        r"
 ----------------------------------------------------------------
 FIRST-STEP PROBABILITY CHECKPOINT
 ----------------------------------------------------------------
@@ -38,7 +38,7 @@ P(action and next_state)
 =
 P(action | state) * P(next_state | state, action)
 ----------------------------------------------------------------
-"#
+"
     )?;
 
     for (transition, probability) in &transitions.outcomes {
@@ -63,10 +63,10 @@ P(action | state) * P(next_state | state, action)
 
 /// The first-step experiment: the branch table, then the expected immediate reward.
 /// `E[r] = Σ P(branch) · reward(branch) = 0.22`, at every boldness
-/// Invariant: JustMet always uses Ask 0.7 and Story 0.3, so boldness cannot move these chances.
-pub(super) fn print(out: &mut impl Write, world: &DatingWorld) -> io::Result<()> {
+/// Invariant: `JustMet` always uses `Ask` 0.7 and `Story` 0.3; boldness cannot move these chances.
+pub(super) fn print(out: &mut impl Write, world: DatingWorld) -> io::Result<()> {
     let policy = default_policy();
-    let transitions = possible_transitions(&policy, world, &State::JustMet);
+    let transitions = possible_transitions(policy, world, State::JustMet);
     print_first_step_walkthrough(out, &transitions)?;
     let immediate_reward = expected_value(&transitions, |transition| transition.reward);
     writeln!(

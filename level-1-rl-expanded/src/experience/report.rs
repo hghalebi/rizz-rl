@@ -1,7 +1,7 @@
 //! The learn-value lesson: train, compare with the exact value, and print a report.
 //!
 //! Question: how far is the learned value from the exact one, and what was actually visited?
-//! Example: 10,000 episodes from JustMet with horizon 5 visit (h = 5, JustMet) 10,000 times.
+//! Example: 10,000 episodes from `JustMet` with horizon 5 visit (h = 5, `JustMet`) 10,000 times.
 //! Predict: an entry shows value 0 and 0 visits. Was 0 learned, or never tested?
 
 use std::fmt;
@@ -14,7 +14,7 @@ use crate::model::{DatingWorld, State};
 use crate::values::evaluate_value;
 
 /// The finished learn-value experiment: `run` computes it, `Display` formats it.
-pub(crate) struct LearningReport {
+pub struct LearningReport {
     config: LearningConfig,
     exact: f64,
     table: ValueTable,
@@ -24,13 +24,13 @@ pub(crate) struct LearningReport {
 /// `learned = table.value(JustMet, h)`,  `exact = evaluate_value(JustMet, h).expected_return`
 /// Invariant: the learner never sees the exact value; agreement proves nothing about realism.
 /// Predict: what might one lucky seed conceal?
-pub(crate) fn run(config: &LearningConfig) -> Result<LearningReport, LearningError> {
+pub fn run(config: &LearningConfig) -> Result<LearningReport, LearningError> {
     let table = train(config)?;
     let Discount(discount) = config.discount;
     let exact = evaluate_value(
-        &config.policy,
-        &DatingWorld,
-        &State::JustMet,
+        config.policy,
+        DatingWorld,
+        State::JustMet,
         config.horizon,
         discount,
     )
@@ -53,10 +53,10 @@ impl fmt::Display for LearningReport {
             seed,
         } = self.config;
         let boldness = policy.boldness();
-        let learned = self.table.value(&State::JustMet, horizon);
+        let learned = self.table.value(State::JustMet, horizon);
         let visits = self
             .table
-            .entry(&State::JustMet, horizon)
+            .entry(State::JustMet, horizon)
             .map_or(0, |entry| entry.visits);
         writeln!(f, "Sampled TD(0) evaluation of a fixed policy.")?;
         writeln!(
@@ -79,7 +79,7 @@ impl fmt::Display for LearningReport {
         )?;
         writeln!(f, "h state              value    visits status")?;
         for steps_remaining in 1..=horizon {
-            for state in State::ALL.iter().filter(|state| !state.is_terminal()) {
+            for state in State::ALL.into_iter().filter(|state| !state.is_terminal()) {
                 let (value, visits, status) = self
                     .table
                     .entry(state, steps_remaining)

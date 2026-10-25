@@ -25,7 +25,7 @@ use crate::model::{DatingWorld, Policy, State};
 use crate::planning::possible_transitions;
 
 /// The answer of one exact evaluation, plus how much work the cache did.
-pub(super) struct ValueEstimate {
+pub struct ValueEstimate {
     pub(super) expected_return: f64,
     /// Distinct nonterminal (state, steps) subproblems evaluated; base cases do not count.
     pub(super) evaluated_states: usize,
@@ -39,10 +39,10 @@ type ValueCache = HashMap<(State, usize), f64>;
 /// Evaluate a fixed policy from `initial_state` with a fresh cache.
 /// `V(horizon, initial_state)`, computed by `value_for`
 /// Invariant: a fresh cache per call, so another policy or discount cannot inherit answers.
-pub(super) fn evaluate_value(
-    policy: &Policy,
-    world: &DatingWorld,
-    initial_state: &State,
+pub fn evaluate_value(
+    policy: Policy,
+    world: DatingWorld,
+    initial_state: State,
     horizon: usize,
     discount: f64,
 ) -> ValueEstimate {
@@ -59,9 +59,9 @@ pub(super) fn evaluate_value(
 /// Invariant: each (state, steps) subproblem is computed once; the cache answers every repeat.
 /// Predict: does a zero continuation value also erase the immediate reward?
 fn value_for(
-    policy: &Policy,
-    world: &DatingWorld,
-    state: &State,
+    policy: Policy,
+    world: DatingWorld,
+    state: State,
     steps_remaining: usize,
     discount: f64,
     cache: &mut ValueCache,
@@ -70,7 +70,7 @@ fn value_for(
         return 0.0;
     }
 
-    let key = (*state, steps_remaining);
+    let key = (state, steps_remaining);
     if let Some(&cached) = cache.get(&key) {
         return cached;
     }
@@ -84,12 +84,13 @@ fn value_for(
             let future_value = value_for(
                 policy,
                 world,
-                &transition.to_state,
+                transition.to_state,
                 steps_remaining - 1,
                 discount,
                 cache,
             );
-            probability * (transition.reward + discount * future_value)
+            let discounted_future = discount * future_value;
+            probability * (transition.reward + discounted_future)
         })
         .sum();
 

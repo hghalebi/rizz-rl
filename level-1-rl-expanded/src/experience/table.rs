@@ -2,7 +2,7 @@
 //!
 //! Question: how does one observed transition correct one stored estimate?
 //! Example: estimate 4, target 10, fourth visit: 4 + (1/4) · (10 - 4) = 5.5.
-//! Predict: do (h = 2, JustMet) and (h = 1, JustMet) share one visit count?
+//! Predict: do (h = 2, `JustMet`) and (h = 1, `JustMet`) share one visit count?
 
 use std::collections::HashMap;
 
@@ -15,12 +15,12 @@ use crate::MAX_HORIZON;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct ValueEntry {
     pub(super) value: f64,
-    pub(super) visits: usize,
+    pub(super) visits: u32,
 }
 
 /// Estimates keyed by the whole question: which state, and how many steps are left.
 /// `(state, steps_remaining) ──► ValueEntry`
-/// Invariant: Engaged with one step left and Engaged with five are two separate entries.
+/// Invariant: `Engaged` with one step left and `Engaged` with five are two separate entries.
 #[derive(Debug, PartialEq)]
 pub(super) struct ValueTable {
     discount: Discount,
@@ -35,7 +35,7 @@ pub(super) struct Update {
     pub(super) bootstrap: f64,
     pub(super) target: f64,
     pub(super) alpha: f64,
-    pub(super) visits: usize,
+    pub(super) visits: u32,
     pub(super) value: f64,
 }
 
@@ -49,14 +49,14 @@ impl ValueTable {
     }
 
     /// The stored entry for (state, steps remaining), if that entry was ever visited.
-    pub(super) fn entry(&self, state: &State, steps_remaining: usize) -> Option<&ValueEntry> {
-        self.entries.get(&(*state, steps_remaining))
+    pub(super) fn entry(&self, state: State, steps_remaining: usize) -> Option<&ValueEntry> {
+        self.entries.get(&(state, steps_remaining))
     }
 
     /// The current estimate for (state, steps remaining).
     /// `V(0, s) = V(h, terminal) = 0`; otherwise the stored value, or the initial 0 if unvisited
     /// Invariant: an unvisited 0 is the declared starting point, not evidence of learning.
-    pub(super) fn value(&self, state: &State, steps_remaining: usize) -> f64 {
+    pub(super) fn value(&self, state: State, steps_remaining: usize) -> f64 {
         if steps_remaining == 0 || state.is_terminal() {
             return 0.0;
         }
@@ -83,15 +83,16 @@ impl ValueTable {
             return Err(LearningError::NonFiniteReward);
         }
         let Discount(discount) = self.discount;
-        let bootstrap = self.value(&observation.to_state, steps_remaining - 1);
-        let target = observation.reward + discount * bootstrap;
-        let previous = self.value(&observation.from_state, steps_remaining);
+        let bootstrap = self.value(observation.to_state, steps_remaining - 1);
+        let discounted_bootstrap = discount * bootstrap;
+        let target = observation.reward + discounted_bootstrap;
+        let previous = self.value(observation.from_state, steps_remaining);
         let visits = self
-            .entry(&observation.from_state, steps_remaining)
+            .entry(observation.from_state, steps_remaining)
             .map_or(0, |entry| entry.visits)
             .checked_add(1)
             .ok_or(LearningError::VisitCountOverflow)?;
-        let alpha = 1.0 / visits as f64;
+        let alpha = 1.0 / f64::from(visits);
         let value = previous + alpha * (target - previous);
         if !target.is_finite() || !value.is_finite() {
             return Err(LearningError::NonFiniteUpdate);

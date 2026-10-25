@@ -36,7 +36,7 @@ impl CommandName {
     ];
 
     /// The spelling a user types.
-    pub(super) fn as_str(self) -> &'static str {
+    pub(super) const fn as_str(self) -> &'static str {
         match self {
             Self::FirstStep => "first-step",
             Self::Returns => "returns",

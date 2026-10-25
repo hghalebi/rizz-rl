@@ -18,6 +18,9 @@ When clarity for a learner conflicts with brevity or production polish, choose c
 - A function that computes a value (a sum, a map, a selection, a repeated expansion) is an iterator pipeline that reads like its formula: `map`, `flat_map`, `filter`, `zip`, `fold`, `reduce`, `sum`, `collect`.
 - A loop stays only where it performs effects in order: writing output rows, drawing random numbers, breaking early at a terminal state. Even then it iterates over a pipeline.
 - Destructure tuples with full names, `(outcome, probability)`, never `.0` or `.1`; destructure newtypes, `let Discount(discount) = ..`.
+- Small `Copy` types (`State`, `Action`, `Policy`, `DatingWorld`) are passed by value. Borrow slices, tables, and anything that is not `Copy`.
+- Inside a private module, items are `pub`: the private `mod` line already keeps them inside the crate.
+- Name an intermediate instead of writing `a + b * c` in one expression, for example `let discounted_future = discount * future_value;`. It reads like the formula, and Clippy would otherwise suggest `mul_add`, which changes rounding.
 - Empty `f64` sums: `sum()` of an empty iterator is `-0.0`, which prints as `-0.000000`. Use `fold(0.0, ..)` where the input can be empty, as `discounted_return` does.
 - Exception, on purpose: `src/exercises/` is where learners write loops by hand. Leave its loops alone.
 - A pipeline a learner meets for the first time gets a stage-by-stage bridge from the loop it replaces, mapped to printed output. [Activity 2A](level-1-rl-expanded/guides/LEARNING_PATH.md#loop-to-pipeline) is the model.
@@ -66,7 +69,9 @@ Above every function, method, struct, and enum, as `///`:
 python3 scripts/check.py
 ```
 
-CI runs the same script with Rust 1.95.0. It checks formatting, Clippy, rustdoc, tests, document links, lesson commands, and exercise selectors.
+CI runs the same script with Rust 1.95.0. It checks formatting, Clippy (default, pedantic, nursery, and cargo groups, all as errors), rustdoc, tests, document links, lesson commands, and exercise selectors.
+
+A lint is fixed in the code, not silenced. The only exceptions are four `#[expect(..., reason = ...)]` attributes where a learner contract fixes the signature; add another only with the same kind of reason.
 
 ## Where things are
 

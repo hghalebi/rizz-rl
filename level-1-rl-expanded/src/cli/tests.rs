@@ -211,7 +211,7 @@ impl Write for ClosedOutput {
 #[test]
 fn write_failures_are_returned_instead_of_panicking() {
     for kind in [io::ErrorKind::BrokenPipe, io::ErrorKind::StorageFull] {
-        let result = execute(Command::FirstStep, &mut ClosedOutput(kind));
+        let result = execute(&Command::FirstStep, &mut ClosedOutput(kind));
         assert!(
             matches!(&result, Err(RunError::Output(error)) if error.kind() == kind),
             "{result:?}"

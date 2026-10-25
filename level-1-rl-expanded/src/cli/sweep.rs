@@ -12,7 +12,7 @@ use crate::planning::{best_policy, evaluate_policy_grid};
 /// Score all eleven grid policies, print each, then name the best under the tie rule.
 pub(super) fn print(
     out: &mut impl Write,
-    world: &DatingWorld,
+    world: DatingWorld,
     horizon: usize,
     discount: f64,
 ) -> io::Result<()> {
