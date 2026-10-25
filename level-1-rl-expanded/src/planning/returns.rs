@@ -3,8 +3,6 @@
 //! Question: what is one history worth when later rewards count for less?
 //! Example: rewards [1, 2, 4] at discount 0.5 give 1 + 1 + 1 = 3.
 //! Predict: what is left at discount 0? What changes at discount 1?
-//!
-//! New to iterators? `guides/LEARNING_PATH.md#loop-to-pipeline` maps each stage to a column.
 
 use std::iter::successors;
 
@@ -22,7 +20,7 @@ pub fn discount_weights(discount: f64) -> impl Iterator<Item = f64> {
 }
 
 /// Score one history: each reward times its weight, added up.
-/// `G = r₀ + γ·r₁ + γ²·r₂ + ...`, so `[1, 2, 4]` at γ = 0.5 gives `1 + 1 + 1 = 3`
+/// `G = r₀ + γ·r₁ + γ²·r₂ + ...`; stage by stage: `guides/LEARNING_PATH.md#loop-to-pipeline`
 /// Invariant: a history's chance plays no part here; `expected_value` applies it later.
 /// Predict: would swapping the first and last rewards preserve this return?
 pub fn discounted_return(trajectory: &[Transition], discount: f64) -> f64 {
