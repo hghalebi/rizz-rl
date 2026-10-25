@@ -46,7 +46,8 @@ pub(super) fn td_target(reward: f64, discount: f64, next_value: f64, terminated:
     if terminated {
         reward
     } else {
-        reward + discount * next_value
+        let discounted_next = discount * next_value;
+        reward + discounted_next
     }
 }
 
@@ -89,6 +90,10 @@ pub(super) fn greedy_action(q_values: &[f64]) -> Option<usize> {
 /// With three actions and epsilon 0.3, each gets 0.1; the winner also gets 0.7.
 /// Initializing the whole Vec first makes the winner's exploration share visible.
 /// Predict: what distribution should this return when only one action exists?
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "the action count is a `usize` by the exercise contract; std has no lossless usize-to-f64 conversion, and `as f64` is exact below 2^53"
+)]
 pub(super) fn epsilon_greedy(q_values: &[f64], epsilon: f64) -> Vec<f64> {
     let Some(greedy_index) = greedy_action(q_values) else {
         return Vec::new();
@@ -106,6 +111,10 @@ pub(super) fn epsilon_greedy(q_values: &[f64], epsilon: f64) -> Vec<f64> {
 /// 2 + (6 - 2) / 4 = 3. The new observation moves the mean only partway.
 /// Converting the count to f64 lets that share be fractional; the function
 /// needs the old summary and count, not a growing Vec of previous returns.
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "the sample count is a `usize` by the exercise contract; std has no lossless usize-to-f64 conversion, and `as f64` is exact below 2^53"
+)]
 pub(super) fn update_mean(previous_mean: f64, new_return: f64, sample_count: usize) -> f64 {
     if sample_count == 1 {
         new_return
@@ -130,7 +139,8 @@ pub(super) fn td_update(
 ) -> f64 {
     let target = td_target(reward, discount, next_value, terminated);
     let error = target - current_value;
-    current_value + learning_rate * error
+    let correction = learning_rate * error;
+    current_value + correction
 }
 
 /// Exercise 9: Q-learning bootstraps from the highest next action value.
@@ -150,7 +160,8 @@ pub(super) fn q_learning_target(
         return Some(reward);
     }
     let best_index = greedy_action(next_action_values)?;
-    Some(reward + discount * next_action_values[best_index])
+    let discounted_best = discount * next_action_values[best_index];
+    Some(reward + discounted_best)
 }
 
 /// Exercise 10: average one-step targets across a known distribution.
@@ -163,7 +174,10 @@ pub(super) fn q_learning_target(
 pub(super) fn bellman_backup(outcomes: &[(f64, f64, f64)], discount: f64) -> f64 {
     outcomes
         .iter()
-        .map(|&(probability, reward, next_value)| probability * (reward + discount * next_value))
+        .map(|&(probability, reward, next_value)| {
+            let discounted_next = discount * next_value;
+            probability * (reward + discounted_next)
+        })
         .sum()
 }
 

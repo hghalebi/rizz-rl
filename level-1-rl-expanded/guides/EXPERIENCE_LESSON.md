@@ -53,7 +53,7 @@ cargo run -- td-trace
 
 If the target is unclear, attempt [exercise 3](EXERCISES.md#3-terminal-aware-td-target), `td_target`. It computes a target without updating stored values. If moving the old estimate is unclear, attempt [exercise 8](EXERCISES.md#8-one-td-update), `td_update`. Each card has its own exact command and separate solution.
 
-[`ValueTable::observe`](../src/experience.rs) borrows the table mutably and only reads the observation. Counts belong to `(h, state)`, not to the whole run. The next-state estimate is looked up at `h - 1`.
+[`ValueTable::observe`](../src/experience/table.rs) borrows the table mutably and only reads the observation. Counts belong to `(h, state)`, not to the whole run. The next-state estimate is looked up at `h - 1`.
 
 A terminal next state or zero remaining horizon gives zero continuation. The last reward still counts. Episodes stop at termination or the selected horizon; this lesson has no separate interruption limit. An external cutoff in a continuing task would require a different interpretation.
 
@@ -88,7 +88,7 @@ Some displayed entries cannot be reached from the chosen initial state and horiz
 
 With learning rate `1 / visits`, each entry averages the targets it has seen. Those targets use continuation estimates that can change during training. This is not simply a mean of complete observed episode returns. [Exercise 7](EXERCISES.md#7-incremental-mean-return), `update_mean`, isolates the latter arithmetic; explain where its new return would come from before comparing the two uses.
 
-In [`experience.rs`](../src/experience.rs), follow `sample_transition` only if you want the Rust detail: the sampler borrows choices, then clones the selected values into an owned observation. `ValueTable::observe` never calls the world or [exact evaluator](../src/values.rs).
+In [`experience/sampling.rs`](../src/experience/sampling.rs), follow `sample_transition` only if you want the Rust detail: the sampler borrows choices, then copies the selected values into an owned observation. `ValueTable::observe` never calls the world or [exact evaluator](../src/values.rs).
 
 </details>
 

@@ -1,5 +1,5 @@
 //! Test-only lessons using the planner's actual Distribution type.
-//! Start at guides/COMPOSITION_LESSON.md; reference answers are in solutions.rs.
+//! Start at `guides/COMPOSITION_LESSON.md`; reference answers are in solutions.rs.
 
 use crate::probability::Distribution;
 

@@ -192,3 +192,22 @@ fn verbose_mode_adds_diagnostics_without_changing_results() {
     assert_eq!(String::from_utf8_lossy(&verbose.stdout), quiet);
     assert!(String::from_utf8_lossy(&verbose.stderr).contains("DEBUG"));
 }
+
+#[test]
+fn a_closed_output_pipe_ends_quietly_instead_of_panicking() {
+    // A reader such as `head` can stop early. Dropping the read end before the
+    // lesson starts makes its first write fail with a broken pipe every time.
+    let (reader, writer) = std::io::pipe().expect("create an output pipe");
+    drop(reader);
+    let output = Command::new(env!("CARGO_BIN_EXE_level_1_rl_expanded"))
+        .arg("sweep")
+        .stdout(writer)
+        .output()
+        .expect("the compiled learning binary should start");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(output.status.code(), Some(0), "{stderr}");
+    assert!(
+        stderr.is_empty(),
+        "a closed reader is not a lesson error: {stderr}"
+    );
+}
